@@ -107,7 +107,7 @@ class Haldane:
                 # On-site potential
                 H[site.site_idx, site.site_idx] = self.m if site.sublattice=='A' else -self.m
                 if self.V is not None:
-                    H[site.site_idx, site.site_idx] += self.V(x=site.r[0], y=site.r[1], **self.V_args)
+                    H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
                 pbar.update(1)
         return H
 

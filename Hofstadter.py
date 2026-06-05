@@ -84,7 +84,7 @@ class Hofstadter:
                         H[neighbour.site_idx, site.site_idx] = self.t * np.exp(1j * self.phi * site.uc_idx[1])
                 # On-site potential
                 if self.V is not None:
-                    H[site.site_idx, site.site_idx] += self.V(r=site.r, **self.V_args)
+                    H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
                 if pbar: pbar.update(1)
         return H
     
