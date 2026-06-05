@@ -17,7 +17,7 @@ This repository implements two paradigmatic models of Chern bands — the **Hald
 Implements the Haldane model on a finite honeycomb lattice with open boundary conditions.
 
 **`Haldane(L, t, m, t2, a, exclude_endsites, V, V_args)`**  
-Constructs an $L \times L$ unit-cell honeycomb lattice with nearest-neighbour hopping $t$, sublattice mass $m$, and complex next-nearest-neighbour hopping $t_2$ (which breaks time-reversal symmetry and opens a topological gap). An optional on-site potential $V(x, y, \texttt{**V\_args})$ can be supplied. The `exclude_endsites` flag removes two isolated corner sites that would otherwise be disconnected from the bulk.
+Constructs an $L \times L$ unit-cell honeycomb lattice with nearest-neighbour hopping $t$, sublattice mass $m$, and complex next-nearest-neighbour hopping $t_2$ (which breaks time-reversal symmetry and opens a topological gap). An optional on-site potential `V(x, y, **V_args)` can be supplied. The `exclude_endsites` flag removes two isolated corner sites that would otherwise be disconnected from the bulk.
 
 Key methods:
 - `build_lattice()` — constructs the `Site` graph including nearest and next-nearest-neighbour connectivity.
