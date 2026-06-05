@@ -38,8 +38,9 @@ class Hofstadter:
                     self.sites.append(site)
                     if pbar: pbar.update(1)
 
-    def plot_lattice(self, color='k', ms=5, plot_V=False, p=0.5, Nx=100):
-        fig, ax = plt.subplots()
+    def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100, plot_fig=False):
+        if ax is None:
+            fig, ax = plt.subplots()
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
@@ -59,7 +60,9 @@ class Hofstadter:
             plot = ax.contourf(xx, yy, V, cmap=plt.colormaps['viridis'], levels=levels)
             cbar = fig.colorbar(plot, ticks=ticks)
             cbar.ax.set_ylabel(r'$V$', rotation=0)
-        plt.show()
+        if plot_fig:
+            plt.show()
+        return 
 
     def remove_site(self, site_idx):
         site = self.sites[site_idx]

@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
+import Hofstadter
+import Haldane
 
 
 def make_title_str(data, base_str='', params={}):
@@ -102,12 +104,28 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-if __name__ == '__main__':
-    # system = Hofstadter(L=10, V=V_nonsep, V_args={'beta':1/np.sqrt(2), 'V':1})
-    # # H = system.calc_H()
-    # # print(sp.linalg.ishermitian(H))
-    # system.plot_lattice(plot_V=True, Nx=100)
-    phi_vals = np.linspace(0, 2*np.pi, 101)
-    f = 'Data/Butterfly_Test_3.npz'
-    # calc_butterfly(phi_vals=phi_vals, L=20, calc_ipr=True, save=True, save_filename=f)
-    plot_butterfly(f, ms=0.5, title_params={'L':r'$L$'}, color_ipr=True, ipr_scale='linear', cmap='plasma')
+def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma', ms=2, log=False):
+    data = np.load(filename)
+    psi = data['evects'][:, index]
+    psi2 = np.abs(psi)**2
+    E = data['E_vals'][index]
+    ipr = data['ipr_vals'][index]
+    L = data['L']
+    system = model(L, show_progress=False)
+    fig, ax = plt.subplots()
+    system.plot_lattice(ax=ax, ms=0, color='k')
+    vmax = np.max(psi2)
+    if log:
+        norm = mcolors.LogNorm(vmin=np.min(psi2[psi2 > 0]), vmax=vmax)
+    else:
+        norm = mcolors.Normalize(vmin=0, vmax=vmax)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    for site in system.sites:
+        c = plt.get_cmap(cmap)(norm(psi2[site.site_idx]))
+        ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label(r'$|\Psi|^2$', rotation=0)
+    title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}' + r', $IPR=$' + f'{ipr:.4g}'
+    ax.set_title(title_str)
+    plt.show()

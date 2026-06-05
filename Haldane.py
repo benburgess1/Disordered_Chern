@@ -51,8 +51,9 @@ class Haldane:
             self.remove_site(2*self.L**2 - 2)       # -2 since already removed the first site
 
 
-    def plot_lattice(self, color='k', ms=5, plot_V=False, p=0.5, Nx=100):
-        fig, ax = plt.subplots()
+    def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100, plot_fig=True):
+        if ax is None:
+            fig, ax = plt.subplots()
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
@@ -71,7 +72,8 @@ class Haldane:
             plot = ax.contourf(xx, yy, V, cmap=plt.colormaps['viridis'], levels=levels)
             cbar = fig.colorbar(plot, ticks=ticks)
             cbar.ax.set_ylabel(r'$V$', rotation=0)
-        plt.show()
+        if plot_fig:
+            plt.show()
 
 
     def remove_site(self, site_idx):
