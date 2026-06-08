@@ -133,7 +133,7 @@ def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma',
 
 
 def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
-                      calc_new=False, **kwargs):
+                      calc_new=False, calc_avg=False, N_max=5, **kwargs):
     data = np.load(filename)
     L = data['L']
     system = model(L, show_progress=False)
@@ -156,6 +156,11 @@ def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, v
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(r'$C(\mathbf{r})$', rotation=0)
     title_str = 'Chern Marker'
+    if calc_avg:
+        c_avg, r_centre = Calculations.calc_avg_chern(chern, system, N_max=N_max, return_centre=True)
+        boundary = N_max * np.array([system.a1+system.a2, -system.a1+system.a2, -system.a1-system.a2, system.a1-system.a2, system.a1+system.a2]) + r_centre
+        ax.plot(boundary[:,0], boundary[:,1], ls='--', color='k', lw=1, marker=None)
+        title_str += r', $\overline{C}=$' + f'{c_avg:.4g}'
     if calc_new:
         if 'N_occ' in kwargs:
             title_str += r', $N_{occ}=$' + f'{kwargs.get('N_occ'):.3g}'

@@ -20,6 +20,7 @@ class Hofstadter:
         self.a = a
         self.a1 = self.a * np.array([1, 0])
         self.a2 = self.a * np.array([0, 1])
+        self.N_sublattice = 1
         self.show_progress = show_progress
         self.sites = []
         self.build_lattice()

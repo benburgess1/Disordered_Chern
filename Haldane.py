@@ -21,6 +21,7 @@ class Haldane:
         self.b = self.a * np.sqrt(3) / 3
         self.b1 = self.b * np.array([0.5*np.sqrt(3), 0.5])
         self.b2 = self.b * np.array([0, 1])
+        self.N_sublattice = 2
         self.show_progress = show_progress
         self.sites = []
         self.build_lattice(exclude_endsites=exclude_endsites)

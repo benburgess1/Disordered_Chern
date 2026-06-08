@@ -87,3 +87,49 @@ def calc_chern_marker(evects, sites, N_occ=None, E_max=None, E_vals=None):
     
     chern_marker = 4 * np.pi * np.imag(diag_PxPyP)
     return chern_marker
+
+def calc_avg_chern(chern_marker, system, N_max, return_centre=False):
+    """
+    Compute the bulk-averaged real-space Chern number.
+
+    The sum of the Chern marker over all bulk sites is divided by the unit
+    cell area, giving the average Chern number per unit cell. The bulk region
+    is defined as sites within +/- N_max lattice vectors of the lattice centre.
+
+    Parameters
+    ----------
+    chern_marker : ndarray, shape (N,)
+        Real-space Chern marker at each site, indexed by site_idx.
+    system : Haldane or Hofstadter
+        System object, from which sites, a1, and a2 are taken.
+    N_max : float
+        Half-width of bulk region in units of lattice vectors.
+
+    Returns
+    -------
+    avg_chern : float
+        Bulk-averaged Chern number.
+    """
+    # Unit cell area: magnitude of cross product a1 x a2
+    uc_area = np.abs(system.a1[0] * system.a2[1] - system.a1[1] * system.a2[0])
+
+    # Infer lattice centre from bounding box of all site positions
+    r_all = np.array([site.r for site in system.sites])
+    r_centre = 0.5 * np.array([r_all[:, 0].min() + r_all[:, 0].max(),
+                                r_all[:, 1].min() + r_all[:, 1].max()])
+
+    # Express displacement from centre in lattice vector coordinates,
+    # i.e. find coefficients (c1, c2) such that dr = c1*a1 + c2*a2
+    # Solve the 2x2 system [a1 | a2] @ [c1, c2]^T = dr for each site
+    A = np.column_stack([system.a1, system.a2])  # shape (2, 2)
+    dr = r_all - r_centre                         # shape (N, 2)
+    coeffs = np.linalg.solve(A, dr.T).T           # shape (N, 2)
+
+    # Select bulk sites: both lattice-vector coordinates within [-N_max, N_max]
+    in_bulk = np.all(np.abs(coeffs) <= N_max, axis=1)
+
+    avg_chern = np.mean(chern_marker[in_bulk]) * system.N_sublattice / uc_area
+    if return_centre:
+        return avg_chern, r_centre
+    else:
+        return avg_chern
