@@ -14,7 +14,8 @@ def make_title_str(data, base_str='', params={}):
             base_str += v + r'$=$' + f'{data[k]:.4g}'
     return base_str
 
-def plot_spectrum(filenames, x_param='V', x_label=None, ms=1, title_params={}, color_ipr=False, cmap='viridis', ipr_scale='log', 
+def plot_spectrum(filenames, x_param='V', x_label=None, ms=10, title_params={}, 
+                  color_ipr=False, cmap='plasma', ipr_scale='log', 
                   normalise_E=False, space_x=False):
     fig, ax = plt.subplots()
 
