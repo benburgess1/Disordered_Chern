@@ -8,7 +8,7 @@ def _progress(total, desc, show):
 
 class Haldane:
     def __init__(self, L, t=1, m=0, t2=0.5j, a=1, exclude_endsites=True,
-                 V=None, V_args={}, show_progress=False):
+                 V=None, V_args={}, show_progress=True):
         self.L = L
         self.t = t
         self.t2 = t2
