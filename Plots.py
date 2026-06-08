@@ -129,3 +129,29 @@ def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma',
     title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}' + r', $IPR=$' + f'{ipr:.4g}'
     ax.set_title(title_str)
     plt.show()
+
+
+def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=2, vmax=None):
+    data = np.load(filename)
+    chern = data['chern_marker']
+    L = data['L']
+    system = model(L, show_progress=False)
+    fig, ax = plt.subplots()
+    system.plot_lattice(ax=ax, ms=0, color='k')
+    if vmax is None:
+        vmax = np.max(np.abs(chern))
+    norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    for site in system.sites:
+        c = plt.get_cmap(cmap)(norm(chern[site.site_idx]))
+        ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
+    cbar = fig.colorbar(sm, ax=ax)
+    cbar.set_label(r'$C(\mathbf{r})$', rotation=0)
+    title_str = 'Chern Marker'
+    if 'N_occ' in data.files:
+        title_str += r', $N_{occ}=$' + f'{data['N_occ']:.3g}'
+    elif 'E_max' in data.files:
+        title_str += r', $E_{max}=$' + f'{data['E_max']:.3g}'
+    ax.set_title(title_str)
+    plt.show()
