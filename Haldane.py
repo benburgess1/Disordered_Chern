@@ -83,7 +83,11 @@ class Haldane:
         for next_neighbour in site.next_neighbours:
             next_neighbour.next_neighbours.remove(site)
         self.sites.remove(site)
+        self.reindex_sites()
 
+    def reindex_sites(self):
+        for n, site in enumerate(self.sites):
+            site.site_idx = n
     
     def calc_H(self):
         N = len(self.sites)
