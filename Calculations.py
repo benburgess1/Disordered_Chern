@@ -32,7 +32,7 @@ def calc_butterfly(phi_vals, L, calc_ipr=True, save=True, save_filename='Data/Bu
             np.savez(save_filename, phi_vals=phi_vals, E_vals=E_vals, L=L, **kwargs)
 
 
-def calc_chern_marker(evects, sites, N_occ=None, E=None, E_vals=None):
+def calc_chern_marker(evects, sites, N_occ=None, E_max=None, E_vals=None):
     """
     Compute the Bianco-Resta real-space Chern marker for each site.
 
@@ -44,7 +44,7 @@ def calc_chern_marker(evects, sites, N_occ=None, E=None, E_vals=None):
         System site list (after reindexing, sites[n].site_idx == n).
     N_occ : int, optional
         Number of occupied bands (lowest N_bands eigenstates).
-    E : float, optional
+    E_max : float, optional
         Fermi energy; occupies all states with E_vals <= E. Overrides N_bands.
     E_vals : ndarray, shape (N,), optional
         Eigenvalues corresponding to evects columns. Required if E is supplied.
@@ -54,10 +54,10 @@ def calc_chern_marker(evects, sites, N_occ=None, E=None, E_vals=None):
     chern_marker : ndarray, shape (N,)
         Real-space Chern marker C(r) at each site, indexed by site_idx.
     """
-    if E is not None:
+    if E_max is not None:
         if E_vals is None:
             raise ValueError("E_vals must be supplied when E is specified.")
-        occ = evects[:, E_vals <= E]
+        occ = evects[:, E_vals <= E_max]
     elif N_occ is not None:
         occ = evects[:, :N_occ]
     else:

@@ -3,6 +3,7 @@ import matplotlib.colors as mcolors
 import numpy as np
 import Hofstadter
 import Haldane
+import Calculations
 
 
 def make_title_str(data, base_str='', params={}):
@@ -104,7 +105,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma', ms=2, log=False):
+def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma', ms=5, log=False):
     data = np.load(filename)
     psi = data['evects'][:, index]
     psi2 = np.abs(psi)**2
@@ -131,11 +132,17 @@ def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma',
     plt.show()
 
 
-def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=2, vmax=None):
+def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
+                      calc_new=False, **kwargs):
     data = np.load(filename)
-    chern = data['chern_marker']
     L = data['L']
     system = model(L, show_progress=False)
+    if calc_new:
+        evects = data['evects']
+        E_vals = data['E_vals']
+        chern = Calculations.calc_chern_marker(evects, system.sites, E_vals=E_vals, **kwargs)
+    else:
+        chern = data['chern_marker']
     fig, ax = plt.subplots()
     system.plot_lattice(ax=ax, ms=0, color='k')
     if vmax is None:
@@ -149,9 +156,16 @@ def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=2, v
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(r'$C(\mathbf{r})$', rotation=0)
     title_str = 'Chern Marker'
-    if 'N_occ' in data.files:
-        title_str += r', $N_{occ}=$' + f'{data['N_occ']:.3g}'
-    elif 'E_max' in data.files:
-        title_str += r', $E_{max}=$' + f'{data['E_max']:.3g}'
+    if calc_new:
+        if 'N_occ' in kwargs:
+            title_str += r', $N_{occ}=$' + f'{kwargs.get('N_occ'):.3g}'
+        elif 'E_max' in kwargs:
+            title_str += r', $E_{max}=$' + f'{kwargs.get('E_max'):.3g}'
+    else:
+        if 'N_occ' in data.files:
+            title_str += r', $N_{occ}=$' + f'{data['N_occ']:.3g}'
+        elif 'E_max' in data.files:
+            title_str += r', $E_{max}=$' + f'{data['E_max']:.3g}'
+    title_str = make_title_str(data, base_str=title_str, params=title_params)
     ax.set_title(title_str)
     plt.show()
