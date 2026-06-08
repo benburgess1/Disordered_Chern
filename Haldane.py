@@ -1,10 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from contextlib import nullcontext
+
+def _progress(total, desc, show):
+    return tqdm(total=total, desc=desc) if show else nullcontext()
 
 class Haldane:
     def __init__(self, L, t=1, m=0, t2=0.5j, a=1, exclude_endsites=True,
-                 V=None, V_args={}):
+                 V=None, V_args={}, show_progress=False):
         self.L = L
         self.t = t
         self.t2 = t2
@@ -17,11 +21,12 @@ class Haldane:
         self.b = self.a * np.sqrt(3) / 3
         self.b1 = self.b * np.array([0.5*np.sqrt(3), 0.5])
         self.b2 = self.b * np.array([0, 1])
+        self.show_progress = show_progress
         self.sites = []
         self.build_lattice(exclude_endsites=exclude_endsites)
         
     def build_lattice(self, exclude_endsites):
-        with tqdm(total=self.L**2, desc='Building lattice') as pbar:
+        with _progress(total=self.L**2, desc='Building lattice', show=self.show_progress) as pbar:
             for i in range(self.L):
                 for j in range(self.L):
                     r_uc = i * self.a1 + j * self.a2
@@ -45,13 +50,13 @@ class Haldane:
                             site_B.add_next_neighbour(self.sites[(i-1)*2*self.L+2*(j+1)+1])
                     self.sites.append(site_A)
                     self.sites.append(site_B)
-                    pbar.update(1)
+                    if pbar: pbar.update(1)
         if exclude_endsites:
             self.remove_site(0)
             self.remove_site(2*self.L**2 - 2)       # -2 since already removed the first site
 
 
-    def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100, plot_fig=True):
+    def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100, plot_fig=False):
         if ax is None:
             fig, ax = plt.subplots()
         ax.set_aspect('equal')
@@ -92,7 +97,7 @@ class Haldane:
     def calc_H(self):
         N = len(self.sites)
         H = np.zeros((N, N), dtype=np.complex128)
-        with tqdm(total=N, desc='Building Hamiltonian') as pbar:
+        with _progress(total=N, desc='Building Hamiltonian', show=self.show_progress) as pbar:
             for site in self.sites:
                 # Near neighbour hopping
                 for neighbour in site.neighbours:
@@ -114,7 +119,7 @@ class Haldane:
                 H[site.site_idx, site.site_idx] = self.m if site.sublattice=='A' else -self.m
                 if self.V is not None:
                     H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
-                pbar.update(1)
+                if pbar: pbar.update(1)
         return H
 
 

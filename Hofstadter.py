@@ -80,7 +80,7 @@ class Hofstadter:
     def calc_H(self):
         N = len(self.sites)
         H = np.zeros((N, N), dtype=np.complex128)
-        with _progress(total=self.L**2, desc='Building Hamiltonian', show=self.show_progress) as pbar:
+        with _progress(total=N, desc='Building Hamiltonian', show=self.show_progress) as pbar:
             for site in self.sites:
                 # Near neighbour hopping
                 for neighbour in site.neighbours:
