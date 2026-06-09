@@ -14,9 +14,10 @@ def make_title_str(data, base_str='', params={}):
             base_str += v + r'$=$' + f'{data[k]:.4g}'
     return base_str
 
-def plot_spectrum(filenames, x_param='V', x_label=None, ms=10, title_params={}, 
-                  color_ipr=False, cmap='plasma', ipr_scale='log', 
-                  normalise_E=False, space_x=False):
+def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
+                 color_ipr=False, cmap='plasma', ipr_scale='log',
+                 normalise_E=False, space_x=False,
+                 line_width=0.1, lw=1.0):
     fig, ax = plt.subplots()
 
     all_ipr = []
@@ -44,12 +45,13 @@ def plot_spectrum(filenames, x_param='V', x_label=None, ms=10, title_params={},
         sm.set_array([])
 
     for x_pos, x_val, E_vals, ipr_vals in datasets:
-        xs = x_pos * np.ones(E_vals.shape[0])
         if color_ipr:
-            c = plt.get_cmap(cmap)(norm(ipr_vals))
-            ax.scatter(xs, E_vals, c=c, s=ms, marker='.', linewidths=0)
+            colors = plt.get_cmap(cmap)(norm(ipr_vals))
+            ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
+                    colors=colors, linewidths=lw)
         else:
-            ax.plot(xs, E_vals, marker='.', ms=ms, color='b', ls='')
+            ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
+                    colors='b', linewidths=lw)
 
     if space_x:
         x_positions = [d[0] for d in datasets]
