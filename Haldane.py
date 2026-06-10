@@ -108,14 +108,14 @@ class Haldane:
                     dr = next_neighbour.r - site.r
                     if site.sublattice == 'A':
                         if np.all(np.isclose(dr, -self.a1)) or np.all(np.isclose(dr, self.a2)) or np.all(np.isclose(dr, self.a1-self.a2)):
-                            H[next_neighbour.site_idx, site.site_idx] = self.t2
-                        else:
                             H[next_neighbour.site_idx, site.site_idx] = np.conj(self.t2)
+                        else:
+                            H[next_neighbour.site_idx, site.site_idx] = self.t2
                     else:
                         if np.all(np.isclose(dr, -self.a1)) or np.all(np.isclose(dr, self.a2)) or np.all(np.isclose(dr, self.a1-self.a2)):
-                            H[next_neighbour.site_idx, site.site_idx] = np.conj(self.t2)
-                        else:
                             H[next_neighbour.site_idx, site.site_idx] = self.t2
+                        else:
+                            H[next_neighbour.site_idx, site.site_idx] = np.conj(self.t2)
                 # On-site potential
                 H[site.site_idx, site.site_idx] = self.m if site.sublattice=='A' else -self.m
                 if self.V is not None:
