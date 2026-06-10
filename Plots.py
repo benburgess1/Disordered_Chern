@@ -180,20 +180,37 @@ def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, v
     ax.set_title(title_str)
     plt.show()
 
-def plot_C_avg(filename, plot_std=False, color='b', ms=4, title_params={}, ylim=None):
+def plot_C_avg(filename, ax=None, plot_std=False, color='b', ms=4, title_params={}, ylim=None, plot_fig=True,
+               label=None):
     data = np.load(filename)
     V_vals = data['V_vals']
     C_mean = data['C_mean']
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     if plot_std:
         C_std = data['C_std']
-        ax.errorbar(V_vals, C_mean, yerr=C_std, marker='o', color=color, ms=ms, ls='-', lw=1)
+        ax.errorbar(V_vals, C_mean, yerr=C_std, marker='o', color=color, ms=ms, ls='-', lw=1, label=label)
     else:
-        ax.plot(V_vals, C_mean, marker='o', color=color, ms=ms, ls='-', lw=1)
+        ax.plot(V_vals, C_mean, marker='o', color=color, ms=ms, ls='-', lw=1, label=label)
     if ylim is not None:
         ax.set_ylim(*ylim)
     ax.set_xlabel(r'$V$ / $t$')
     ax.set_ylabel(r'$\overline{C}$')
     title_str = make_title_str(data, base_str='Phase-Averaged Chern Marker', params=title_params)
     ax.set_title(title_str)
+    if plot_fig:
+        plt.show()
+
+def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
+    fig, ax = plt.subplots()
+    cmap = plt.get_cmap(cmap)
+    colors = [cmap(i / max(len(filenames) - 1, 1)) for i in range(len(filenames))]
+    for i, f in enumerate(filenames):
+        data = np.load(f)
+        L = data['L']
+        plot_C_avg(f, ax=ax, color=colors[i], label=str(L), plot_fig=False, **kwargs)
+    ax.legend(title=r'$L$')
+    title_str = make_title_str(data, base_str='Phase-Averaged Chern Marker', params=title_params)
+    ax.set_title(title_str)
     plt.show()
+    
