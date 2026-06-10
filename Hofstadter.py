@@ -11,7 +11,8 @@ def _progress(total, desc, show):
 
 class Hofstadter:
     def __init__(self, L, t=1, phi=0., a=1,
-                 V=None, V_args={}, show_progress=True):
+                 V=None, V_args={}, show_progress=True,
+                 **kwargs):
         self.L = L
         self.t = t
         self.phi = phi

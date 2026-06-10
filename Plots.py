@@ -115,7 +115,7 @@ def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma',
     E = data['E_vals'][index]
     ipr = data['ipr_vals'][index]
     L = data['L']
-    system = model(L, show_progress=False)
+    system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'])
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
     system.plot_lattice(ax=ax, ms=0, color='k')
@@ -140,7 +140,7 @@ def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, v
                       calc_new=False, calc_avg=False, N_max=5, **kwargs):
     data = np.load(filename)
     L = data['L']
-    system = model(L, show_progress=False)
+    system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'])
     if calc_new:
         evects = data['evects']
         E_vals = data['E_vals']
