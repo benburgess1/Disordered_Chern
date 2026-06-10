@@ -29,7 +29,9 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
         x_val = data[x_param]
         x_pos = i if space_x else x_val
         if normalise_E:
-            E_vals = E_vals / np.max(np.abs(E_vals))
+            E_min = np.min(E_vals)
+            E_max = np.max(E_vals)
+            E_vals = (E_vals - E_min) / (E_max - E_min)
         ipr_vals = data['ipr_vals'] if color_ipr else None
         datasets.append((x_pos, x_val, E_vals, ipr_vals))
         if color_ipr:
@@ -66,7 +68,7 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
     if x_label is None:
         x_label = x_param
     ax.set_xlabel(x_label)
-    ax.set_ylabel(r'$E$ / $t$' if not normalise_E else r'$E$ / $E_\mathrm{max}$')
+    ax.set_ylabel(r'$E$ / $t$' if not normalise_E else r'$(E-E_\mathrm{min})$ / $(E_\mathrm{max}-E_\mathrm{min})$')
     title_str = make_title_str(data, base_str='Spectrum', params=title_params)
     ax.set_title(title_str)
     plt.show()
