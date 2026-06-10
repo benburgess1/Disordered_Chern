@@ -32,7 +32,7 @@ def calc_butterfly(phi_vals, L, calc_ipr=True, save=True, save_filename='Data/Bu
             np.savez(save_filename, phi_vals=phi_vals, E_vals=E_vals, L=L, **kwargs)
 
 
-def calc_chern_marker(evects, sites, N_occ=None, E_max=None, E_vals=None):
+def calc_chern_marker(evects, system, N_occ=None, E_max=None, E_vals=None):
     """
     Compute the Bianco-Resta real-space Chern marker for each site.
 
@@ -62,6 +62,8 @@ def calc_chern_marker(evects, sites, N_occ=None, E_max=None, E_vals=None):
         occ = evects[:, :N_occ]
     else:
         raise ValueError("Either N_bands or E (with E_vals) must be supplied.")
+    
+    sites = system.sites
 
     # Position operators (diagonal matrices)
     x = np.array([site.r[0] for site in sites])

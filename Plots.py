@@ -177,3 +177,19 @@ def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, v
     title_str = make_title_str(data, base_str=title_str, params=title_params)
     ax.set_title(title_str)
     plt.show()
+
+def plot_C_avg(filename, plot_std=False, color='b', ms=5, title_params={}):
+    data = np.load(filename)
+    V_vals = data['V_vals']
+    C_mean = data['C_mean']
+    fig, ax = plt.subplots()
+    if plot_std:
+        C_std = data['C_std']
+        ax.errorbar(V_vals, C_mean, yerr=C_std, marker='o', color=color, ms=ms, ls='-', lw=1)
+    else:
+        ax.plot(V_vals, C_mean, marker='o', color=color, ms=ms, ls='-', lw=1)
+    ax.set_xlabel(r'$V$ / $t$')
+    ax.set_ylabel(r'$\overline{C}$')
+    title_str = make_title_str(data, base_str='Phase-Averaged Chern Marker', params=title_params)
+    ax.set_title(title_str)
+    plt.show()
