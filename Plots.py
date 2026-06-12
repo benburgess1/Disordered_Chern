@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
-import Hofstadter
-import Haldane
+import Lattice
 import Calculations
 
 
@@ -110,7 +109,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma', ms=5, log=False, max_orders=None):
+def plot_eigenstate(filename, index, model=Lattice.Hofstadter, cmap='plasma', ms=5, log=False, max_orders=None):
     data = np.load(filename)
     psi = data['evects'][:, index]
     psi2 = np.abs(psi)**2
@@ -142,7 +141,7 @@ def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma',
     plt.show()
 
 
-def plot_chern_marker(filename, model=Hofstadter.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
+def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
                       calc_new=False, calc_avg=False, N_max=5, **kwargs):
     data = np.load(filename)
     L = data['L']

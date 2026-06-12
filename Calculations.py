@@ -1,7 +1,6 @@
 import numpy as np
-from Hofstadter import Hofstadter
-from Haldane import Haldane
 from tqdm import tqdm
+from Lattice import Hofstadter
 
 
 def calc_spectrum(H, return_evects=False):
