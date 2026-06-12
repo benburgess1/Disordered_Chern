@@ -40,7 +40,8 @@ class Hofstadter:
                     self.sites.append(site)
                     if pbar: pbar.update(1)
 
-    def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100, plot_fig=False):
+    def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100, plot_fig=False,
+                     plot_V_onsite=False, cmap_name='viridis'):
         if ax is None:
             fig, ax = plt.subplots()
         ax.set_aspect('equal')
@@ -51,20 +52,28 @@ class Hofstadter:
                 ax.plot([site.r[0], neighbour.r[0]], [site.r[1], neighbour.r[1]], 
                         marker='o', color=color, ms=ms, ls='-')
         if plot_V and self.V is not None:
-            # p = 0.5
-            x = np.linspace(-p, (self.L-1)*self.a + p, Nx)
-            y = np.copy(x)
-            # y = np.linspace(-p, (self.L-1)*self.a + p, Nx)
+            x = np.linspace(-p, (self.L-1)*(self.a1[0]+self.a2[0]) + self.b1[0] + p, Nx)
+            y = np.linspace(-p, (self.L-1)*self.a2[1] + self.b1[1] + p, Nx)
             xx, yy = np.meshgrid(x, y, indexing='ij')
             V = self.V(xx, yy, **self.V_args)
             levels = np.linspace(np.min(V), np.max(V), 200)
             ticks = [np.min(V), 0, np.max(V)]
-            plot = ax.contourf(xx, yy, V, cmap=plt.colormaps['viridis'], levels=levels)
+            plot = ax.contourf(xx, yy, V, cmap=plt.colormaps[cmap_name], levels=levels)
             cbar = fig.colorbar(plot, ticks=ticks)
             cbar.ax.set_ylabel(r'$V$', rotation=0)
+        if plot_V_onsite and self.V is not None:
+            vmax = self.V_args['V'] * 2
+            norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
+            sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=norm)
+            sm.set_array([])
+            for site in self.sites:
+                V_site = self.V(*site.r, **self.V_args)
+                c = plt.get_cmap(cmap_name)(norm(V_site))
+                ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
+            cbar = fig.colorbar(sm, ax=ax)
+            cbar.set_label(r'$V(\mathbf{r})$', rotation=0)
         if plot_fig:
             plt.show()
-        return 
 
     def remove_site(self, site_idx):
         site = self.sites[site_idx]
