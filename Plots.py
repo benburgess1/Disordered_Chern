@@ -216,3 +216,37 @@ def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
     ax.set_title(title_str)
     plt.show()
     
+def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_param='C_mean',
+                       cmap='RdBu_r', x_label=None, y_label=None, z_label=None,
+                       title_params={}, vmax=None):
+    data = np.load(filename)
+    x_data = data[x_param]
+    y_data = data[y_param]
+    z_data = data[z_param]
+
+    if z_data.shape == (y_data.size, x_data.size):
+        z_data = z_data.T
+    elif z_data.shape != (x_data.size, y_data.size):
+        raise ValueError(f"z_data shape {z_data.shape} inconsistent with x ({x_data.size},) and y ({y_data.size},)")
+
+    dx = (x_data[1] - x_data[0]) / 2
+    dy = (y_data[1] - y_data[0]) / 2
+    extent = [x_data[0] - dx, x_data[-1] + dx, y_data[0] - dy, y_data[-1] + dy]
+
+    if vmax is None:
+        vmax = np.max(np.abs(z_data))
+    norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(z_data.T, origin='lower', extent=extent, aspect='auto',
+                   cmap=cmap, norm=norm)
+
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label(z_label if z_label is not None else z_param, rotation=0)
+
+    ax.set_xlabel(x_label if x_label is not None else x_param)
+    ax.set_ylabel(y_label if y_label is not None else y_param)
+
+    title_str = make_title_str(data, base_str='Phase Diagram', params=title_params)
+    ax.set_title(title_str)
+    plt.show()
