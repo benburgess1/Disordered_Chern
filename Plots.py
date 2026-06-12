@@ -110,7 +110,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma', ms=5, log=False):
+def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma', ms=5, log=False, max_orders=None):
     data = np.load(filename)
     psi = data['evects'][:, index]
     psi2 = np.abs(psi)**2
@@ -123,7 +123,11 @@ def plot_eigenstate(filename, index, model=Hofstadter.Hofstadter, cmap='plasma',
     system.plot_lattice(ax=ax, ms=0, color='k')
     vmax = np.max(psi2)
     if log:
-        norm = mcolors.LogNorm(vmin=np.min(psi2[psi2 > 0]), vmax=vmax)
+        if max_orders is not None:
+            vmin = vmax * 10 ** (-max_orders)
+        else:
+            vmin = np.min(psi2[psi2 >0 ])
+        norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
     else:
         norm = mcolors.Normalize(vmin=0, vmax=vmax)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
