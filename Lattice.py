@@ -28,6 +28,10 @@ class Lattice(ABC):
     def calc_H(self):
         pass
 
+    def set_potentials(self):
+        for site in self.sites:
+            site.V = self.V(*site.r, **self.V_args)
+
     def remove_site(self, site_idx):
         site = self.sites[site_idx]
         for neighbour in site.neighbours:
@@ -45,6 +49,7 @@ class Lattice(ABC):
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis'):
         if ax is None:
             fig, ax = plt.subplots()
+            fig.set_size_inches(9, 5)
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
@@ -70,8 +75,10 @@ class Lattice(ABC):
                 sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=norm)
                 sm.set_array([])
                 for site in self.sites:
-                    V_site = self.V(*site.r, **self.V_args)
-                    c = plt.get_cmap(cmap_name)(norm(V_site))
+                    # V_site = self.V(*site.r, **self.V_args)
+                    # V_site = site.
+                    # c = plt.get_cmap(cmap_name)(norm(V_site))
+                    c = plt.get_cmap(cmap_name)(norm(site.V))
                     ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
                 cbar = fig.colorbar(sm, ax=ax)
                 cbar.set_label(r'$V(\mathbf{r})$', rotation=0)
@@ -93,6 +100,7 @@ class Haldane(Lattice):
         self.b2 = self.b * np.array([0, 1])
         self.N_sublattice = 2
         self.build_lattice(exclude_endsites=exclude_endsites)
+        self.set_potentials()
 
     def build_lattice(self, exclude_endsites=True):
         with _progress(total=self.L**2, desc='Building lattice', show=self.show_progress) as pbar:
@@ -148,7 +156,8 @@ class Haldane(Lattice):
                 # On-site potential
                 H[site.site_idx, site.site_idx] = self.m if site.sublattice == 'A' else -self.m
                 if self.V is not None:
-                    H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
+                    # H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
+                    H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
         return H
 
@@ -163,6 +172,7 @@ class Hofstadter(Lattice):
         self.a2 = self.a * np.array([0, 1])
         self.N_sublattice = 1
         self.build_lattice()
+        self.set_potentials()
 
     def build_lattice(self):
         with _progress(total=self.L**2, desc='Building lattice', show=self.show_progress) as pbar:
@@ -193,7 +203,8 @@ class Hofstadter(Lattice):
                         H[neighbour.site_idx, site.site_idx] = self.t * np.exp(1j * self.phi * site.uc_idx[1])
                 # On-site potential
                 if self.V is not None:
-                    H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
+                    # H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
+                    H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
         return H
 
@@ -206,6 +217,7 @@ class Site:
         self.site_idx = site_idx
         self.neighbours = []
         self.next_neighbours = []
+        self.V = 0
 
     def add_neighbour(self, other):
         if self not in other.neighbours:
