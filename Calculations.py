@@ -137,7 +137,7 @@ def calc_avg_chern(chern_marker, system, N_max, return_centre=False):
     
 
 def calc_chern_vs_E(system, E_F_vals, N_max=3, save=True, save_filename='Data/Haldane_C_vs_E.npz',
-                    calc_ipr=True, save_spectrum=True):
+                    calc_ipr=False, save_spectrum=False):
     H = system.calc_H()
     evals, evects = calc_spectrum(H)
     if calc_ipr:
