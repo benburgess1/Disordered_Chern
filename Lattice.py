@@ -75,9 +75,6 @@ class Lattice(ABC):
                 sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=norm)
                 sm.set_array([])
                 for site in self.sites:
-                    # V_site = self.V(*site.r, **self.V_args)
-                    # V_site = site.
-                    # c = plt.get_cmap(cmap_name)(norm(V_site))
                     c = plt.get_cmap(cmap_name)(norm(site.V))
                     ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
                 cbar = fig.colorbar(sm, ax=ax)
@@ -156,7 +153,6 @@ class Haldane(Lattice):
                 # On-site potential
                 H[site.site_idx, site.site_idx] = self.m if site.sublattice == 'A' else -self.m
                 if self.V is not None:
-                    # H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
                     H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
         return H
@@ -203,7 +199,6 @@ class Hofstadter(Lattice):
                         H[neighbour.site_idx, site.site_idx] = self.t * np.exp(1j * self.phi * site.uc_idx[1])
                 # On-site potential
                 if self.V is not None:
-                    # H[site.site_idx, site.site_idx] += self.V(*site.r, **self.V_args)
                     H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
         return H
