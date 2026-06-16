@@ -16,7 +16,7 @@ def make_title_str(data, base_str='', params={}):
 def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
                  color_ipr=False, cmap='plasma', ipr_scale='log',
                  normalise_E=False, space_x=False,
-                 line_width=0.1, lw=1.0):
+                 line_width=0.1, lw=1.0, color_ipr_exponent=False):
     fig, ax = plt.subplots()
 
     all_ipr = []
@@ -31,12 +31,18 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
             E_min = np.min(E_vals)
             E_max = np.max(E_vals)
             E_vals = (E_vals - E_min) / (E_max - E_min)
-        ipr_vals = data['ipr_vals'] if color_ipr else None
-        datasets.append((x_pos, x_val, E_vals, ipr_vals))
+        ipr_vals = data['ipr_vals'] if color_ipr or color_ipr_exponent else None
+        L = data['L']
+        exponent_vals = -np.log(ipr_vals)/np.log(2*L**2) if color_ipr_exponent else None
+        datasets.append((x_pos, x_val, E_vals, ipr_vals, exponent_vals))
         if color_ipr:
             all_ipr.append(ipr_vals)
-
-    if color_ipr:
+    
+    if color_ipr_exponent:
+        norm = mcolors.Normalize(vmin=0, vmax=1)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+    elif color_ipr:
         all_ipr_concat = np.concatenate(all_ipr)
         if ipr_scale == 'log':
             norm = mcolors.LogNorm(vmin=all_ipr_concat.min(), vmax=all_ipr_concat.max())
@@ -45,8 +51,13 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
 
-    for x_pos, x_val, E_vals, ipr_vals in datasets:
-        if color_ipr:
+    for x_pos, x_val, E_vals, ipr_vals, exponent_vals in datasets:
+        if color_ipr_exponent:
+            print(x_val, np.max(exponent_vals), np.min(exponent_vals))
+            colors = plt.get_cmap(cmap)(norm(exponent_vals))
+            ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
+                    colors=colors, linewidths=lw)
+        elif color_ipr:
             colors = plt.get_cmap(cmap)(norm(ipr_vals))
             ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
                     colors=colors, linewidths=lw)
@@ -60,7 +71,11 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
         ax.set_xticks(x_positions)
         ax.set_xticklabels(x_labels)
 
-    if color_ipr:
+    if color_ipr_exponent:
+        cbar = fig.colorbar(sm, ax=ax)
+        # cbar.set_label(r'$-\ln{(IPR)}$ / $\ln{(N_{sites})}$')
+        cbar.set_label(r'$-\frac{\ln{(IPR)}}{\ln{(N_{sites})}}$', rotation=0, fontsize=15, labelpad=10, y=0.53)
+    elif color_ipr:
         cbar = fig.colorbar(sm, ax=ax)
         cbar.set_label('IPR')
 
