@@ -17,6 +17,7 @@ class Lattice(ABC):
         self.a = a
         self.V = V
         self.V_args = V_args
+        self.V_name = self.V.__name__
         self.show_progress = show_progress
         self.sites = []
 
@@ -26,6 +27,10 @@ class Lattice(ABC):
 
     @abstractmethod
     def calc_H(self):
+        pass
+
+    @abstractmethod
+    def build_save_dict(self):
         pass
 
     def set_potentials(self):
@@ -96,10 +101,12 @@ class Haldane(Lattice):
         self.b1 = self.b * np.array([0.5 * np.sqrt(3), 0.5])
         self.b2 = self.b * np.array([0, 1])
         self.N_sublattice = 2
-        self.build_lattice(exclude_endsites=exclude_endsites)
+        self.exclude_endsites = exclude_endsites
+        self.build_lattice()
         self.set_potentials()
+        self.save_dict = self.build_save_dict()
 
-    def build_lattice(self, exclude_endsites=True):
+    def build_lattice(self):
         with _progress(total=self.L**2, desc='Building lattice', show=self.show_progress) as pbar:
             for i in range(self.L):
                 for j in range(self.L):
@@ -125,7 +132,7 @@ class Haldane(Lattice):
                     self.sites.append(site_A)
                     self.sites.append(site_B)
                     if pbar: pbar.update(1)
-        if exclude_endsites:
+        if self.exclude_endsites:
             self.remove_site(0)
             self.remove_site(2*self.L**2 - 2)    # -2 since already removed the first site
 
@@ -157,6 +164,23 @@ class Haldane(Lattice):
                 if pbar: pbar.update(1)
         return H
 
+    def build_save_dict(self):
+        save_dict = {
+            't':                self.t,
+            't2':               self.t2,
+            't2_mag':           np.abs(self.t2),
+            'phi':              np.angle(self.t2),
+            'm':                self.m,
+            'L':                self.L,
+            'a':                self.a,
+            'exclude_endsites': self.exclude_endsites,
+            'V_name':           self.V_name,
+        }
+        for p in ['V', 'beta', 'phi_1', 'phi_2', 'theta']:
+            if p in self.V_args.keys():
+                save_dict[p] = self.V_args[p]
+        return save_dict
+
 
 class Hofstadter(Lattice):
     def __init__(self, L, t=1, phi=0., a=1,
@@ -169,6 +193,7 @@ class Hofstadter(Lattice):
         self.N_sublattice = 1
         self.build_lattice()
         self.set_potentials()
+        self.save_dict = self.build_save_dict()
 
     def build_lattice(self):
         with _progress(total=self.L**2, desc='Building lattice', show=self.show_progress) as pbar:
@@ -202,6 +227,19 @@ class Hofstadter(Lattice):
                     H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
         return H
+
+    def build_save_dict(self):
+        save_dict = {
+            't':                self.t,
+            'phi':              np.angle(self.t2),
+            'L':                self.L,
+            'a':                self.a,
+            'V_name':           self.V_name,
+        }
+        for p in ['V', 'beta', 'phi_1', 'phi_2', 'theta']:
+            if p in self.V_args.keys():
+                save_dict[p] = self.V_args[p]
+        return save_dict
 
 
 class Site:
