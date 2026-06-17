@@ -53,7 +53,6 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
 
     for x_pos, x_val, E_vals, ipr_vals, exponent_vals in datasets:
         if color_ipr_exponent:
-            print(x_val, np.max(exponent_vals), np.min(exponent_vals))
             colors = plt.get_cmap(cmap)(norm(exponent_vals))
             ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
                     colors=colors, linewidths=lw)
@@ -268,3 +267,33 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
     title_str = make_title_str(data, base_str='Phase Diagram', params=title_params)
     ax.set_title(title_str)
     plt.show()
+
+def plot_chern_vs_param(filenames, x_param='E_F_vals', x_label=None, filling_fraction=False,
+                     legend_param='V', legend_title=None,
+                     cmap='viridis', ms=4, lw=1.5, title_params={}):
+    if legend_title is None:
+        legend_title = legend_param
+    if x_label is None:
+        x_label = r'$E_F$ / $t$' if x_param == 'E_F_vals' else x_param
+
+    fig, ax = plt.subplots()
+    colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(filenames)))
+
+    for filename, color in zip(filenames, colors):
+        data = np.load(filename)
+        if x_param == 'N_occ_vals':
+            x_vals = data['N_occ_vals'] / (2 * data['L']**2) if filling_fraction else data['N_occ_vals']
+        else:
+            x_vals = data[x_param]
+        C_vals = data['C_vals']
+        label = data[legend_param]
+        ax.plot(x_vals, C_vals, marker='o', ms=ms, lw=lw, color=color, label=label)
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(r'$\overline{C}$', rotation=0)
+    ax.legend(title=legend_title)
+    title_str = make_title_str(data, base_str='Chern marker vs ' + x_label, params=title_params)
+    ax.set_title(title_str)
+    plt.show()
+
+    
