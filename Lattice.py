@@ -17,7 +17,7 @@ class Lattice(ABC):
         self.a = a
         self.V = V
         self.V_args = V_args
-        self.V_name = self.V.__name__
+        self.V_name = self.V.__name__ if self.V is not None else 'None'
         self.show_progress = show_progress
         self.sites = []
 
@@ -34,8 +34,9 @@ class Lattice(ABC):
         pass
 
     def set_potentials(self):
-        for site in self.sites:
-            site.V = self.V(*site.r, **self.V_args)
+        if self.V is not None:
+            for site in self.sites:
+                site.V = self.V(*site.r, **self.V_args)
 
     def remove_site(self, site_idx):
         site = self.sites[site_idx]
