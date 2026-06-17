@@ -136,10 +136,12 @@ def calc_avg_chern(chern_marker, system, N_max, return_centre=False):
         return avg_chern
     
 
-def calc_chern_vs_E(system, E_F_vals, N_max=3, save=True, save_filename='Data/Haldane_C_vs_E.npz',
+def calc_chern_vs_E(system, E_F_vals=None, N_E_F=100, N_max=3, save=True, save_filename='Data/Haldane_C_vs_E.npz',
                     calc_ipr=False, save_spectrum=False):
     H = system.calc_H()
-    evals, evects = calc_spectrum(H)
+    evals, evects = calc_spectrum(H, return_evects=True)
+    if E_F_vals is None:
+        E_F_vals = np.linspace(np.min(evals), np.max(evals), N_E_F)
     if calc_ipr:
         ipr_vals = np.sum(np.abs(evects)**4, axis=0)
     C_vals = np.zeros_like(E_F_vals)
@@ -147,9 +149,34 @@ def calc_chern_vs_E(system, E_F_vals, N_max=3, save=True, save_filename='Data/Ha
         chern_marker = calc_chern_marker(evects, system, E_max=E, E_vals=evals)
         C_vals[i] = calc_avg_chern(chern_marker, system, N_max=N_max)
     if save:
-        save_dict = system.save_dict()
+        save_dict = system.save_dict
         save_dict.update({
             'E_F_vals': E_F_vals,
+            'C_vals':   C_vals,
+        })
+        if save_spectrum:
+            save_dict['E_vals'] = evals
+        if calc_ipr:
+            save_dict['ipr_vals'] = ipr_vals
+        np.savez(save_filename, **save_dict)
+
+
+def calc_chern_vs_N(system, N_occ_vals=None, N_max=3, save=True, save_filename='Data/Haldane_C_vs_N.npz',
+                    calc_ipr=False, save_spectrum=False):
+    H = system.calc_H()
+    evals, evects = calc_spectrum(H, return_evects=True)
+    if N_occ_vals is None:
+        N_occ_vals = np.arange(1, 2*system.L**2+1)
+    if calc_ipr:
+        ipr_vals = np.sum(np.abs(evects)**4, axis=0)
+    C_vals = np.zeros(np.size(N_occ_vals))
+    for i, N_occ in enumerate(tqdm(N_occ_vals, desc='Calculating over occupancy values')):
+        chern_marker = calc_chern_marker(evects, system, N_occ=N_occ)
+        C_vals[i] = calc_avg_chern(chern_marker, system, N_max=N_max)
+    if save:
+        save_dict = system.save_dict
+        save_dict.update({
+            'N_occ_vals': N_occ_vals,
             'C_vals':   C_vals,
         })
         if save_spectrum:
