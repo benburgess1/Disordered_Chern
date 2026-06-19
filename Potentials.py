@@ -33,3 +33,6 @@ def V_hex_rot(x, y, beta=1, V=1, a=1, phi_1=0, phi_2=0, theta=0., **kwargs):
     G1 = R @ G1
     G2 = R @ G2
     return V * (np.cos((G1[0]+G2[0])*x + (G1[1]+G2[1])*y + phi_1) + np.cos((G1[0]-G2[0])*x + (G1[1]-G2[1])*y + phi_2))
+
+def V_random(x, y, V=1, rng=np.random.default_rng(0), **kwargs):
+    return V * (2 * rng.random() - 1)

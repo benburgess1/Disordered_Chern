@@ -35,6 +35,13 @@ class Lattice(ABC):
 
     def set_potentials(self):
         if self.V is not None:
+            if self.V_name == 'V_random':
+                # Set seed once when initialising the potentials, which are calculated by 
+                # sequentially calling rng.random(). Thereafter, V on each site is stored 
+                # as an attribute for each site and never needs to be recalculated.
+                seed = self.V_args['seed'] if 'seed' in self.V_args.keys() else None
+                rng = np.random.default_rng(seed=seed)
+                self.V_args['rng'] = rng
             for site in self.sites:
                 site.V = self.V(*site.r, **self.V_args)
 
@@ -76,7 +83,7 @@ class Lattice(ABC):
                 cbar = fig.colorbar(plot, ticks=ticks)
                 cbar.ax.set_ylabel(r'$V$', rotation=0)
             if plot_V_onsite:
-                vmax = self.V_args['V'] * 2
+                vmax = np.ceil(np.max([site.V for site in self.sites]))
                 norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
                 sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=norm)
                 sm.set_array([])
