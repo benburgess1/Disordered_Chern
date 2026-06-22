@@ -66,7 +66,7 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
 
     if space_x:
         x_positions = [d[0] for d in datasets]
-        x_labels = [str(d[1]) for d in datasets]
+        x_labels = [f'{d[1]:.3g}' for d in datasets]
         ax.set_xticks(x_positions)
         ax.set_xticklabels(x_labels)
 
@@ -286,7 +286,7 @@ def plot_chern_vs_param(filenames, x_param='E_F_vals', x_label=None, filling_fra
         else:
             x_vals = data[x_param]
         C_vals = data['C_vals']
-        label = data[legend_param]
+        label = f'{data[legend_param]:.3g}'
         ax.plot(x_vals, C_vals, marker='o', ms=ms, lw=lw, color=color, label=label)
 
     ax.set_xlabel(x_label)
