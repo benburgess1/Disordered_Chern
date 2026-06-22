@@ -235,7 +235,7 @@ def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
     
 def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_param='C_mean',
                        cmap='RdBu_r', x_label=None, y_label=None, z_label=None,
-                       title_params={}, vmax=None):
+                       title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5):
     data = np.load(filename)
     x_data = data[x_param]
     y_data = data[y_param]
@@ -257,6 +257,14 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
     fig, ax = plt.subplots()
     im = ax.imshow(z_data.T, origin='lower', extent=extent, aspect='auto',
                    cmap=cmap, norm=norm)
+    
+    if plot_power_law:
+        x_pl = np.linspace(np.min(x_data), np.max(x_data), 100)
+        y_pl = A * x_pl ** n
+        label = r'$V_c=A|t_2|^n, A=$' + f'{A:.3g}' r'$, n=$' + f'{n:.3g}'
+        ax.plot(x_pl, y_pl, color='c', ls='--', marker=None, label=label)
+        ax.legend()
+
 
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label(z_label if z_label is not None else z_param, rotation=0)
