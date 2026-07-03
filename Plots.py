@@ -304,4 +304,53 @@ def plot_chern_vs_param(filenames, x_param='E_F_vals', x_label=None, filling_fra
     ax.set_title(title_str)
     plt.show()
 
-    
+
+def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
+             lw=1.5, ax=None, compute_dos=True, title_params={}, **kwargs):
+    """
+    Plot the density of states for a list of data files.
+
+    Parameters
+    ----------
+    filenames : list of str
+        Paths to .npz files.
+    legend_param : str
+        Key in each data file used to label each curve in the legend.
+    legend_title : str, optional
+        Title for the legend. Defaults to legend_param.
+    cmap : str
+        Colormap from which curve colours are sampled uniformly.
+    lw : float
+        Line width.
+    ax : matplotlib Axes, optional
+        Axes to plot on. Created if None.
+    compute_dos : bool
+        If True, compute DOS from E_vals using calc_dos() passing **kwargs.
+        If False, read DOS and E_grid directly from data['DOS'] and data['E_grid'].
+    **kwargs
+        Passed to calc_dos() when compute_dos=True (e.g. sigma, N_grid, n_sigma).
+    """
+    if legend_title is None:
+        legend_title = legend_param
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(filenames)))
+
+    for filename, color in zip(filenames, colors):
+        data = np.load(filename)
+        if compute_dos:
+            E_grid, DOS = Calculations.calc_dos(filename=filename, **kwargs)
+        else:
+            E_grid = data['E_grid']
+            DOS = data['DOS']
+        label = np.round(data[legend_param], 3)
+        ax.plot(E_grid, DOS, lw=lw, color=color, label=label)
+
+    ax.set_xlabel(r'$E$ / $t$')
+    ax.set_ylabel(r'$\rho(E)$ (arb.)')
+    ax.legend(title=legend_title)
+    title_str = make_title_str(data, base_str='Density of States', params=title_params)
+    ax.set_title(title_str)
+    plt.show()

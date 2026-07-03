@@ -184,3 +184,52 @@ def calc_chern_vs_N(system, N_occ_vals=None, N_max=3, save=True, save_filename='
         if calc_ipr:
             save_dict['ipr_vals'] = ipr_vals
         np.savez(save_filename, **save_dict)
+
+
+def calc_dos(E_vals=None, filename=None, sigma=0.1, E_grid=None, n_sigma=5, N_grid=1000):
+    """
+    Calculate the density of states by convolving eigenvalues with a Gaussian kernel.
+
+    Parameters
+    ----------
+    E_vals : ndarray, optional
+        Energy eigenvalues. If not supplied, filename must be given.
+    filename : str, optional
+        Path to .npz file containing 'E_vals'. Used only if E_vals is None.
+    sigma : float
+        Width of the Gaussian smoothing kernel.
+    E_grid : ndarray, optional
+        Energy grid on which to evaluate the DOS. If None, auto-determined
+        from the range of E_vals padded by n_sigma * sigma on each side.
+    n_sigma : float
+        Number of sigma by which to pad the auto-determined E_grid.
+    N_grid : int
+        Number of points in the auto-determined E_grid.
+
+    Returns
+    -------
+    E_grid : ndarray, shape (N_grid,)
+        Energy values at which DOS is evaluated.
+    DOS : ndarray, shape (N_grid,)
+        Density of states.
+    """
+    if E_vals is None:
+        if filename is None:
+            raise ValueError("Either E_vals or filename must be supplied.")
+        data = np.load(filename)
+        E_vals = data['E_vals'].ravel()
+    else:
+        E_vals = np.asarray(E_vals).ravel()
+
+    if E_grid is None:
+        E_min = E_vals.min() - n_sigma * sigma
+        E_max = E_vals.max() + n_sigma * sigma
+        E_grid = np.linspace(E_min, E_max, N_grid)
+
+    # DOS(E) = sum_n G(E - E_n), where G is a normalised Gaussian.
+    # Computed via broadcasting: (N_grid, N_evals) -> sum over N_evals axis.
+    # For very large systems, use the explicit loop commented below instead.
+    dE = E_grid[:, np.newaxis] - E_vals[np.newaxis, :]   # shape (N_grid, N_evals)
+    DOS = np.sum(np.exp(-0.5 * (dE / sigma)**2), axis=1) / (sigma * np.sqrt(2 * np.pi))
+
+    return E_grid, DOS
