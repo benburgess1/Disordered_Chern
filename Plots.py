@@ -141,7 +141,6 @@ def plot_eigenstate(filename, index, model=Lattice.Hofstadter, cmap='plasma', ms
     psi = data['evects'][:, index]
     psi2 = np.abs(psi)**2
     E = data['E_vals'][index]
-    ipr = data['ipr_vals'][index]
     L = data['L']
     system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'])
     fig, ax = plt.subplots()
@@ -163,7 +162,11 @@ def plot_eigenstate(filename, index, model=Lattice.Hofstadter, cmap='plasma', ms
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(r'$|\Psi|^2$', rotation=0)
-    title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}' + r', $IPR=$' + f'{ipr:.4g}'
+    title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}'
+    if 'ipr_vals' in data.files:
+        title_str += r', $IPR=$' + f'{data['ipr_vals'][index]:.4g}'
+    if 'polarization' in data.files:
+        title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
     ax.set_title(title_str)
     plt.show()
 
