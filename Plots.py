@@ -54,21 +54,20 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
             all_color_vals.append(color_vals)
 
     # --- Set up norm and colorbar ---
+    fontsize = 11
     if color_mode == 'ipr':
         all_concat = np.concatenate(all_color_vals)
         norm = (mcolors.LogNorm(vmin=all_concat.min(), vmax=all_concat.max())
                 if ipr_scale == 'log' else
                 mcolors.Normalize(vmin=all_concat.min(), vmax=all_concat.max()))
         cbar_label = 'IPR'
-        rotation = 0
     elif color_mode == 'exponent':
         norm = mcolors.Normalize(vmin=0, vmax=1)
         cbar_label = r'$-\frac{\ln{(\mathrm{IPR})}}{\ln{(N_\mathrm{sites})}}$'
-        rotation = 0
+        fontsize = 15
     elif color_mode == 'polarization':
         norm = mcolors.Normalize(vmin=-1, vmax=1)
-        cbar_label = 'Sublattice Polarization'
-        rotation = 90
+        cbar_label = r'$p$'
     else:
         norm = None
         cbar_label = None
@@ -86,7 +85,7 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
         sm.set_array([])
         cbar = fig.colorbar(sm, ax=ax)
         if cbar_label:
-            cbar.set_label(cbar_label, rotation=rotation, fontsize=15, labelpad=10, y=0.53)
+            cbar.set_label(cbar_label, rotation=0, fontsize=fontsize, labelpad=10, y=0.53)
 
     # --- Axes labels and formatting ---
     if space_x:
