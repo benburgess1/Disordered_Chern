@@ -136,34 +136,54 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
 
 
 def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, L=30, cmap='plasma', ms=5, log=False, max_orders=None,
-                    title_str=''):
+                    title_str='', plot_quantity='abs', fix_gauge=True):
     if psi is None:
         if filename is None:
             raise ValueError('Either state psi or filename and index must be specified')
         data = np.load(filename)
         psi = data['evects'][:, index]
         L = data['L']
-    psi2 = np.abs(psi)**2
+    if fix_gauge:       # Choose gauge with the wavefunction real and positive on the first site
+        psi *= np.exp(-1j * np.angle(psi[0]))
+    if plot_quantity == 'abs':
+        z = np.abs(psi)**2
+        vmin = 0
+        vmax = np.max(z)
+        z_label = r'$|\Psi|^2$'
+    elif plot_quantity == 'real':
+        z = np.real(psi)
+        vmax = np.max(np.abs(z))
+        vmin = -vmax
+        z_label = r'$Re(\Psi)$'
+    elif plot_quantity == 'imag':
+        z = np.imag(psi)
+        vmax = np.max(np.abs(z))
+        vmin = -vmax
+        z_label = r'$Im(\Psi)$'
+    
+    if log:
+        if plot_quantity != 'abs':
+            raise Warning('log=True may fail if not plotting strictly positive abs(psi)')
+        if max_orders is not None:
+            vmin = vmax * 10 ** (-max_orders)
+        else:
+            vmin = np.min(z[z > 0])
+        norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
+    else:
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+
     system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'] if filename is not None else False)
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
     system.plot_lattice(ax=ax, ms=0, color='k')
-    vmax = np.max(psi2)
-    if log:
-        if max_orders is not None:
-            vmin = vmax * 10 ** (-max_orders)
-        else:
-            vmin = np.min(psi2[psi2 >0 ])
-        norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
-    else:
-        norm = mcolors.Normalize(vmin=0, vmax=vmax)
-    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
+
     for site in system.sites:
-        c = plt.get_cmap(cmap)(norm(psi2[site.site_idx]))
+        c = plt.get_cmap(cmap)(norm(z[site.site_idx]))
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
     cbar = fig.colorbar(sm, ax=ax)
-    cbar.set_label(r'$|\Psi|^2$', rotation=0)
+    cbar.set_label(z_label, rotation=0)
     if filename is not None:
         E = data['E_vals'][index]
         title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}'
