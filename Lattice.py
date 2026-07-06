@@ -95,6 +95,9 @@ class Lattice(ABC):
         if plot_fig:
             plt.show()
 
+    def get_bulk_mask(self, N_edge=1):
+        return [~site.near_edge(N_edge, self.L) for site in self.sites]
+
 
 class Haldane(Lattice):
     def __init__(self, L, t=1, m=0, t2=0.5j, a=1, exclude_endsites=True,
@@ -119,8 +122,8 @@ class Haldane(Lattice):
             for i in range(self.L):
                 for j in range(self.L):
                     r_uc = i * self.a1 + j * self.a2
-                    site_A = Site(r=r_uc, uc_idx=(i, j), sublattice='A', site_idx=i*2*self.L+2*j)
-                    site_B = Site(r=r_uc+self.b1, uc_idx=(i, j), sublattice='B', site_idx=i*2*self.L+2*j+1)
+                    site_A = Site(r=r_uc, uc_idx=np.array([i, j]), sublattice='A', site_idx=i*2*self.L+2*j)
+                    site_B = Site(r=r_uc+self.b1, uc_idx=np.array([i, j]), sublattice='B', site_idx=i*2*self.L+2*j+1)
                     # Add near neighbours
                     site_A.add_neighbour(site_B)
                     if j > 0:
@@ -208,7 +211,7 @@ class Hofstadter(Lattice):
             for i in range(self.L):
                 for j in range(self.L):
                     r = i * self.a1 + j * self.a2
-                    site = Site(r=r, uc_idx=(i, j), site_idx=i*self.L+j)
+                    site = Site(r=r, uc_idx=np.array([i, j]), site_idx=i*self.L+j)
                     # Add near neighbours
                     if j > 0:
                         site.add_neighbour(self.sites[i*self.L+j-1])
@@ -269,3 +272,6 @@ class Site:
         if self not in other.next_neighbours:
             other.next_neighbours.append(self)
             self.next_neighbours.append(other)
+
+    def near_edge(self, N_edge, L):
+        return np.logical_or(np.any(self.uc_idx<=N_edge-1), np.any(self.uc_idx>=L-N_edge))

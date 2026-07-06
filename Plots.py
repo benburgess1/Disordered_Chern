@@ -135,13 +135,16 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-def plot_eigenstate(filename, index, model=Lattice.Hofstadter, cmap='plasma', ms=5, log=False, max_orders=None):
-    data = np.load(filename)
-    psi = data['evects'][:, index]
+def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, L=30, cmap='plasma', ms=5, log=False, max_orders=None,
+                    title_str=''):
+    if psi is None:
+        if filename is None:
+            raise ValueError('Either state psi or filename and index must be specified')
+        data = np.load(filename)
+        psi = data['evects'][:, index]
+        L = data['L']
     psi2 = np.abs(psi)**2
-    E = data['E_vals'][index]
-    L = data['L']
-    system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'])
+    system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'] if filename is not None else False)
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
     system.plot_lattice(ax=ax, ms=0, color='k')
@@ -161,11 +164,13 @@ def plot_eigenstate(filename, index, model=Lattice.Hofstadter, cmap='plasma', ms
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(r'$|\Psi|^2$', rotation=0)
-    title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}'
-    if 'ipr_vals' in data.files:
-        title_str += r', $IPR=$' + f'{data['ipr_vals'][index]:.4g}'
-    if 'polarization' in data.files:
-        title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
+    if filename is not None:
+        E = data['E_vals'][index]
+        title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}'
+        if 'ipr_vals' in data.files:
+            title_str += r', $IPR=$' + f'{data['ipr_vals'][index]:.4g}'
+        if 'polarization' in data.files:
+            title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
     ax.set_title(title_str)
     plt.show()
 
