@@ -370,3 +370,53 @@ def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
     title_str = make_title_str(data, base_str='Density of States', params=title_params)
     ax.set_title(title_str)
     plt.show()
+
+
+def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
+                            cmap='viridis', ms=2, ax=None, lw=0,
+                            title_params={}):
+    """
+    Plot sublattice polarization vs energy for a list of .npz files.
+
+    Parameters
+    ----------
+    filenames : list of str
+        Paths to .npz files, each containing 'E_vals' and 'polarization'.
+    legend_param : str
+        Key in each data file used to label each curve in the legend.
+    legend_title : str, optional
+        Title for the legend. Defaults to legend_param.
+    cmap : str
+        Colormap from which curve colours are sampled uniformly.
+    ms : float
+        Marker size.
+    ax : matplotlib Axes, optional
+        Axes to plot on. Created if None.
+    lw : float
+        Line width. Defaults to 0 (markers only).
+    title_params : dict
+        Parameters to include in the plot title via make_title_str.
+    """
+    if legend_title is None:
+        legend_title = legend_param
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(filenames)))
+
+    for filename, color in zip(filenames, colors):
+        data = np.load(filename)
+        E_vals = data['E_vals']
+        polarization = data['polarization']
+        label = data[legend_param]
+        ax.plot(E_vals, polarization, marker='o', ms=ms, lw=lw,
+                color=color, label=label)
+
+    ax.set_xlabel(r'$E$ / $t$')
+    ax.set_ylabel(r'$p$', rotation=0)
+    ax.set_ylim(-1, 1)
+    ax.axhline(0, color='k', lw=0.5, ls='--')
+    ax.legend(title=legend_title)
+    ax.set_title(make_title_str(data, base_str='Sublattice polarization', params=title_params))
+    plt.show()
