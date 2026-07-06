@@ -14,76 +14,89 @@ def make_title_str(data, base_str='', params={}):
     return base_str
 
 def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
-                 color_ipr=False, cmap='plasma', ipr_scale='log',
-                 normalise_E=False, space_x=False,
-                 line_width=0.1, lw=1.0, color_ipr_exponent=False):
+                 color_mode=None, cmap='plasma', ipr_scale='log',
+                 normalise_E=False, space_x=False, line_width=0.1, lw=1.0):
+    """
+    Plot spectrum from a list of .npz files.
+
+    Parameters
+    ----------
+    color_mode : {None, 'ipr', 'exponent', 'polarization'}
+        Quantity used to colour each eigenstate. None plots all states in blue.
+    """
     fig, ax = plt.subplots()
 
-    all_ipr = []
+    # --- Load datasets ---
     datasets = []
+    all_color_vals = []
 
     for i, filename in enumerate(filenames):
         data = np.load(filename)
         E_vals = data['E_vals']
-        x_val = data[x_param]
+        x_val = float(data[x_param])
         x_pos = i if space_x else x_val
+
         if normalise_E:
-            E_min = np.min(E_vals)
-            E_max = np.max(E_vals)
-            E_vals = (E_vals - E_min) / (E_max - E_min)
-        ipr_vals = data['ipr_vals'] if color_ipr or color_ipr_exponent else None
-        L = data['L']
-        exponent_vals = -np.log(ipr_vals)/np.log(2*L**2) if color_ipr_exponent else None
-        datasets.append((x_pos, x_val, E_vals, ipr_vals, exponent_vals))
-        if color_ipr:
-            all_ipr.append(ipr_vals)
-    
-    if color_ipr_exponent:
+            E_vals = (E_vals - E_vals.min()) / (E_vals.max() - E_vals.min())
+
+        if color_mode == 'ipr':
+            color_vals = data['ipr_vals']
+        elif color_mode == 'exponent':
+            L = data['L']
+            color_vals = -np.log(data['ipr_vals']) / np.log(2 * L**2)
+        elif color_mode == 'polarization':
+            color_vals = data['polarization']
+        else:
+            color_vals = None
+
+        datasets.append((x_pos, x_val, E_vals, color_vals))
+        if color_vals is not None:
+            all_color_vals.append(color_vals)
+
+    # --- Set up norm and colorbar ---
+    if color_mode == 'ipr':
+        all_concat = np.concatenate(all_color_vals)
+        norm = (mcolors.LogNorm(vmin=all_concat.min(), vmax=all_concat.max())
+                if ipr_scale == 'log' else
+                mcolors.Normalize(vmin=all_concat.min(), vmax=all_concat.max()))
+        cbar_label = 'IPR'
+        rotation = 0
+    elif color_mode == 'exponent':
         norm = mcolors.Normalize(vmin=0, vmax=1)
+        cbar_label = r'$-\frac{\ln{(\mathrm{IPR})}}{\ln{(N_\mathrm{sites})}}$'
+        rotation = 0
+    elif color_mode == 'polarization':
+        norm = mcolors.Normalize(vmin=-1, vmax=1)
+        cbar_label = 'Sublattice Polarization'
+        rotation = 90
+    else:
+        norm = None
+        cbar_label = None
+
+    # --- Plot ---
+    cmap_fn = plt.get_cmap(cmap)
+    for x_pos, x_val, E_vals, color_vals in datasets:
+        colors = cmap_fn(norm(color_vals)) if norm is not None else 'b'
+        ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
+                  colors=colors, linewidths=lw)
+
+    # --- Colorbar ---
+    if norm is not None:
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
-    elif color_ipr:
-        all_ipr_concat = np.concatenate(all_ipr)
-        if ipr_scale == 'log':
-            norm = mcolors.LogNorm(vmin=all_ipr_concat.min(), vmax=all_ipr_concat.max())
-        else:
-            norm = mcolors.Normalize(vmin=all_ipr_concat.min(), vmax=all_ipr_concat.max())
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax)
+        if cbar_label:
+            cbar.set_label(cbar_label, rotation=rotation, fontsize=15, labelpad=10, y=0.53)
 
-    for x_pos, x_val, E_vals, ipr_vals, exponent_vals in datasets:
-        if color_ipr_exponent:
-            colors = plt.get_cmap(cmap)(norm(exponent_vals))
-            ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
-                    colors=colors, linewidths=lw)
-        elif color_ipr:
-            colors = plt.get_cmap(cmap)(norm(ipr_vals))
-            ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
-                    colors=colors, linewidths=lw)
-        else:
-            ax.hlines(E_vals, x_pos - line_width/2, x_pos + line_width/2,
-                    colors='b', linewidths=lw)
-
+    # --- Axes labels and formatting ---
     if space_x:
-        x_positions = [d[0] for d in datasets]
-        x_labels = [f'{d[1]:.3g}' for d in datasets]
-        ax.set_xticks(x_positions)
-        ax.set_xticklabels(x_labels)
+        ax.set_xticks([d[0] for d in datasets])
+        ax.set_xticklabels([f'{d[1]:.3g}' for d in datasets])
 
-    if color_ipr_exponent:
-        cbar = fig.colorbar(sm, ax=ax)
-        # cbar.set_label(r'$-\ln{(IPR)}$ / $\ln{(N_{sites})}$')
-        cbar.set_label(r'$-\frac{\ln{(IPR)}}{\ln{(N_{sites})}}$', rotation=0, fontsize=15, labelpad=10, y=0.53)
-    elif color_ipr:
-        cbar = fig.colorbar(sm, ax=ax)
-        cbar.set_label('IPR')
-
-    if x_label is None:
-        x_label = x_param
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(r'$E$ / $t$' if not normalise_E else r'$(E-E_\mathrm{min})$ / $(E_\mathrm{max}-E_\mathrm{min})$')
-    title_str = make_title_str(data, base_str='Spectrum', params=title_params)
-    ax.set_title(title_str)
+    ax.set_xlabel(x_label if x_label is not None else x_param)
+    ax.set_ylabel(r'$E$ / $t$' if not normalise_E else
+                  r'$(E - E_\mathrm{min})$ / $(E_\mathrm{max} - E_\mathrm{min})$')
+    ax.set_title(make_title_str(data, base_str='Spectrum', params=title_params))
     plt.show()
 
 

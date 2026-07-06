@@ -233,3 +233,27 @@ def calc_dos(E_vals=None, filename=None, sigma=0.1, E_grid=None, n_sigma=5, N_gr
     DOS = np.sum(np.exp(-0.5 * (dE / sigma)**2), axis=1) / (sigma * np.sqrt(2 * np.pi))
 
     return E_grid, DOS
+
+def calc_sublattice_polarization(evects):
+    """
+    Calculate the sublattice polarization for each eigenstate.
+
+    Assumes basis states are ordered ABAB..., so sublattice A (B) corresponds
+    to even (odd) indices.
+
+    Parameters
+    ----------
+    evects : ndarray, shape (N, N)
+        Eigenvectors as columns.
+
+    Returns
+    -------
+    polarization : ndarray, shape (N,)
+        Sublattice polarization p = |<psi|P_A|psi>|^2 - |<psi|P_B|psi>|^2
+        for each eigenstate.
+    """
+    prob = np.abs(evects)**2          # shape (N, N)
+    weight_A = np.sum(prob[0::2], axis=0)
+    weight_B = np.sum(prob[1::2], axis=0)
+    polarization = weight_A - weight_B
+    return polarization
