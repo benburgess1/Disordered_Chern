@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from Lattice import Hofstadter
+from Lattice import Hofstadter, Haldane
 
 
 def calc_spectrum(H, return_evects=False):
@@ -249,7 +249,7 @@ def calc_sublattice_polarization(evects):
     Returns
     -------
     polarization : ndarray, shape (N,)
-        Sublattice polarization p = |<psi|P_A|psi>|^2 - |<psi|P_B|psi>|^2
+        Sublattice polarization p = <psi|P_A|psi> - <psi|P_B|psi>
         for each eigenstate.
     """
     prob = np.abs(evects)**2          # shape (N, N)
@@ -257,3 +257,53 @@ def calc_sublattice_polarization(evects):
     weight_B = np.sum(prob[1::2], axis=0)
     polarization = weight_A - weight_B
     return polarization
+
+
+def calc_bloch_state(k, u, L, model='haldane'):
+    """
+    Construct a Bloch state on a finite lattice in the real-space site basis.
+
+    The Bloch state is:
+        psi_r = (1/sqrt(N_uc)) * exp(i k.r_uc) * u[sublattice_idx]
+    where r_uc is the unit cell position of site r and sublattice_idx maps
+    each site to its component in the spinor u.
+
+    Parameters
+    ----------
+    k : array-like, shape (2,)
+        Crystal momentum vector.
+    u : array-like, shape (N_sublattice,)
+        Spinor (internal degree of freedom) at this k-point, e.g. from
+        diagonalising the 2x2 Bloch Hamiltonian H(k).
+    L : int
+        Linear dimension of the lattice (L^2 unit cells).
+    model : {'haldane', 'hofstadter'}
+        Determines which dummy system to construct for site positions/labels.
+
+    Returns
+    -------
+    psi : ndarray, shape (N_sites,), dtype complex128
+        Normalised Bloch state in the real-space site basis.
+    """
+    k = np.asarray(k)
+    u = np.asarray(u, dtype=np.complex128)
+
+    if model == 'haldane':
+        system = Haldane(L=L, show_progress=False, exclude_endsites=False)
+        sublattice_map = {'A': 0, 'B': 1}
+        sublattice_idx = np.array([sublattice_map[site.sublattice] for site in system.sites])
+    elif model == 'hofstadter':
+        system = Hofstadter(L=L, show_progress=False)
+        sublattice_idx = np.zeros(len(system.sites), dtype=int)
+    else:
+        raise ValueError(f"Unknown model '{model}'. Choose 'haldane' or 'hofstadter'.")
+    
+    r = np.array([site.r for site in system.sites])  # full site positions
+    phase = np.exp(1j * (k @ r.T))                    # shape (N_sites,)
+    spinor_weights = u[sublattice_idx]
+    psi = phase * spinor_weights
+    psi /= np.linalg.norm(psi)
+
+    return psi
+
+
