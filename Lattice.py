@@ -100,7 +100,7 @@ class Lattice(ABC):
 
 
 class Haldane(Lattice):
-    def __init__(self, L, t=1, m=0, t2=0.5j, a=1, exclude_endsites=True,
+    def __init__(self, L, t=1, m=0, t2=0.5j, a=1, exclude_endsites=False,
                  V=None, V_args={}, show_progress=True, **kwargs):
         super().__init__(L=L, t=t, a=a, V=V, V_args=V_args,
                          show_progress=show_progress, **kwargs)

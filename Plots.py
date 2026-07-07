@@ -15,7 +15,8 @@ def make_title_str(data, base_str='', params={}):
 
 def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
                  color_mode=None, cmap='plasma', ipr_scale='log',
-                 normalise_E=False, space_x=False, line_width=0.1, lw=1.0):
+                 normalise_E=False, space_x=False, line_width=0.1, lw=1.0,
+                 bulk=False, **kwargs):
     """
     Plot spectrum from a list of .npz files.
 
@@ -33,6 +34,11 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
     for i, filename in enumerate(filenames):
         data = np.load(filename)
         E_vals = data['E_vals']
+        if bulk:
+            mask = Calculations.bulk_eigenstate_mask(data['evects'], L=data['L'], **kwargs)
+        else:
+            mask = np.full_like(E_vals, True)
+        E_vals = E_vals[mask]
         x_val = float(data[x_param])
         x_pos = i if space_x else x_val
 
@@ -40,12 +46,12 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
             E_vals = (E_vals - E_vals.min()) / (E_vals.max() - E_vals.min())
 
         if color_mode == 'ipr':
-            color_vals = data['ipr_vals']
+            color_vals = data['ipr_vals'][mask]
         elif color_mode == 'exponent':
             L = data['L']
-            color_vals = -np.log(data['ipr_vals']) / np.log(2 * L**2)
+            color_vals = -np.log(data['ipr_vals'][mask]) / np.log(2 * L**2)
         elif color_mode == 'polarization':
-            color_vals = data['polarization']
+            color_vals = data['polarization'][mask]
         else:
             color_vals = None
 
@@ -374,7 +380,7 @@ def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
         If True, compute DOS from E_vals using calc_dos() passing **kwargs.
         If False, read DOS and E_grid directly from data['DOS'] and data['E_grid'].
     **kwargs
-        Passed to calc_dos() when compute_dos=True (e.g. sigma, N_grid, n_sigma).
+        Passed to calc_dos() when compute_dos=True (e.g. sigma, N_grid, n_sigma, bulk).
     """
     if legend_title is None:
         legend_title = legend_param

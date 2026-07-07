@@ -186,7 +186,8 @@ def calc_chern_vs_N(system, N_occ_vals=None, N_max=3, save=True, save_filename='
         np.savez(save_filename, **save_dict)
 
 
-def calc_dos(E_vals=None, filename=None, sigma=0.1, E_grid=None, n_sigma=5, N_grid=1000):
+def calc_dos(E_vals=None, filename=None, sigma=0.1, E_grid=None, n_sigma=5, N_grid=1000,
+             bulk=False, **kwargs):
     """
     Calculate the density of states by convolving eigenvalues with a Gaussian kernel.
 
@@ -205,7 +206,11 @@ def calc_dos(E_vals=None, filename=None, sigma=0.1, E_grid=None, n_sigma=5, N_gr
         Number of sigma by which to pad the auto-determined E_grid.
     N_grid : int
         Number of points in the auto-determined E_grid.
-
+    bulk : bool
+        Project out states not hosted in the bulk of the system. Can only be passed if 
+        a filename with stored evects is passed.
+    **kwargs : 
+        Passed to bulk_eigenstate_mask(). E.g. N_edge, c.
     Returns
     -------
     E_grid : ndarray, shape (N_grid,)
@@ -218,6 +223,9 @@ def calc_dos(E_vals=None, filename=None, sigma=0.1, E_grid=None, n_sigma=5, N_gr
             raise ValueError("Either E_vals or filename must be supplied.")
         data = np.load(filename)
         E_vals = data['E_vals'].ravel()
+        if bulk:
+            mask = bulk_eigenstate_mask(data['evects'], L=data['L'], **kwargs)
+            E_vals = E_vals[mask]
     else:
         E_vals = np.asarray(E_vals).ravel()
 
@@ -307,3 +315,10 @@ def calc_bloch_state(k, u, L, model='haldane'):
     return psi
 
 
+def bulk_eigenstate_mask(evects, L=None, N_edge=2, c=0.8, model=Haldane, **kwargs):
+    if L is None:
+        L = int(np.sqrt(evects.shape[0]/2))
+    system = model(L=L, show_progress=False, **kwargs)
+    mask = system.get_bulk_mask(N_edge=N_edge)
+    bulk_weights = np.sum(np.abs(evects[mask, :])**2, axis=0)
+    return bulk_weights > c
