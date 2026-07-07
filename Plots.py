@@ -135,7 +135,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, L=30, cmap='plasma', ms=5, log=False, max_orders=None,
+def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, L=30, cmap=None, ms=5, log=False, max_orders=None,
                     title_str='', plot_quantity='abs', fix_gauge=True):
     if psi is None:
         if filename is None:
@@ -150,16 +150,22 @@ def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, 
         vmin = 0
         vmax = np.max(z)
         z_label = r'$|\Psi|^2$'
+        if cmap is None:
+            cmap = 'plasma'
     elif plot_quantity == 'real':
         z = np.real(psi)
         vmax = np.max(np.abs(z))
         vmin = -vmax
         z_label = r'$Re(\Psi)$'
+        if cmap is None:
+            cmap = 'RdBu_r'
     elif plot_quantity == 'imag':
         z = np.imag(psi)
         vmax = np.max(np.abs(z))
         vmin = -vmax
         z_label = r'$Im(\Psi)$'
+        if cmap is None:
+            cmap = 'RdBu_r'
     
     if log:
         if plot_quantity != 'abs':
