@@ -401,10 +401,10 @@ def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
     ax.set_title(title_str)
     plt.show()
 
-
 def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
                             cmap='viridis', ms=2, ax=None, lw=0,
-                            title_params={}):
+                            title_params={}, highlight_idx=None,
+                            highlight_color='r', highlight_label=None):
     """
     Plot sublattice polarization vs energy for a list of .npz files.
 
@@ -426,10 +426,15 @@ def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
         Line width. Defaults to 0 (markers only).
     title_params : dict
         Parameters to include in the plot title via make_title_str.
+    highlight_idx : int or list of ints
+        Indices of states to highlight by plotting in a separate colour.
+    highlight_color : str or list of str
+        Colour in which to highlight selected states.
+    highlight_label : str or list of str
+        Label for legend entry of highlighted points
     """
     if legend_title is None:
         legend_title = legend_param
-
     if ax is None:
         fig, ax = plt.subplots()
 
@@ -439,9 +444,24 @@ def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
         data = np.load(filename)
         E_vals = data['E_vals']
         polarization = data['polarization']
-        label = data[legend_param]
         ax.plot(E_vals, polarization, marker='o', ms=ms, lw=lw,
-                color=color, label=label)
+                color=color, label=data[legend_param])
+
+        if highlight_idx is not None:
+            # Broadcast to arrays so single string/colour and array cases unify
+            idxs   = np.atleast_1d(highlight_idx)
+            colors_h = np.atleast_1d(highlight_color)
+            labels_h = np.atleast_1d(highlight_label) if highlight_label is not None else np.full(len(idxs), None)
+
+            if len(colors_h) == 1:
+                # Single colour/label: plot all highlighted points together
+                ax.plot(E_vals[idxs], polarization[idxs], marker='x',
+                        color=colors_h[0], ms=ms*3, lw=0, label=labels_h[0])
+            else:
+                # Per-point colours and labels
+                for idx, c, lab in zip(idxs, colors_h, labels_h):
+                    ax.plot(E_vals[idx], polarization[idx], marker='x',
+                            color=c, ms=ms*3, lw=0, label=lab)
 
     ax.set_xlabel(r'$E$ / $t$')
     ax.set_ylabel(r'$p$', rotation=0)
