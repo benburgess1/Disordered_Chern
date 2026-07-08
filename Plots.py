@@ -358,7 +358,8 @@ def plot_chern_vs_param(filenames, x_param='E_F_vals', x_label=None, filling_fra
 
 
 def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
-             lw=1.5, ax=None, compute_dos=True, title_params={}, **kwargs):
+             lw=1.5, ax=None, compute_dos=True, title_params={}, highlight_idx=None,
+             highlight_color='r', highlight_label=None, **kwargs):
     """
     Plot the density of states for a list of data files.
 
@@ -399,6 +400,20 @@ def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
             DOS = data['DOS']
         label = np.round(data[legend_param], 3)
         ax.plot(E_grid, DOS, lw=lw, color=color, label=label)
+        if highlight_idx is not None:
+            idxs   = np.atleast_1d(highlight_idx)
+            colors_h = np.atleast_1d(highlight_color)
+            labels_h = np.atleast_1d(highlight_label) if highlight_label is not None else np.full(len(idxs), None)
+            E_vals = data['E_vals']
+            if len(colors_h) == 1:
+                # Single colour/label: plot all highlighted points together
+                for idx, c, lab in zip(idxs, colors_h, labels_h):
+                    ax.axvline(x=E_vals[idx], color=colors_h[0], lw=1.5, label=lab)
+            else:
+                # Per-point colours and labels
+                for idx, c, lab in zip(idxs, colors_h, labels_h):
+                    ax.axvline(x=E_vals[idx], color=c, lw=1.5, label=lab)
+
 
     ax.set_xlabel(r'$E$ / $t$')
     ax.set_ylabel(r'$\rho(E)$ (arb.)')
