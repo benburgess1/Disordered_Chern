@@ -425,7 +425,8 @@ def plot_dos(filenames, legend_param='V', legend_title=None, cmap='viridis',
 def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
                             cmap='viridis', ms=2, ax=None, lw=0,
                             title_params={}, highlight_idx=None,
-                            highlight_color='r', highlight_label=None):
+                            highlight_color='r', highlight_label=None, 
+                            bulk=False, **kwargs):
     """
     Plot sublattice polarization vs energy for a list of .npz files.
 
@@ -453,6 +454,8 @@ def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
         Colour in which to highlight selected states.
     highlight_label : str or list of str
         Label for legend entry of highlighted points
+    bulk : bool
+        Plot only points corresponding to bulk eigenstates.
     """
     if legend_title is None:
         legend_title = legend_param
@@ -464,8 +467,12 @@ def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
     for filename, color in zip(filenames, colors):
         data = np.load(filename)
         E_vals = data['E_vals']
+        if bulk:
+            mask = Calculations.bulk_eigenstate_mask(data['evects'], data['L'], **kwargs)
+        else:
+            mask = np.full_like(E_vals, True)
         polarization = data['polarization']
-        ax.plot(E_vals, polarization, marker='o', ms=ms, lw=lw,
+        ax.plot(E_vals[mask], polarization[mask], marker='o', ms=ms, lw=lw,
                 color=color, label=data[legend_param])
 
         if highlight_idx is not None:
