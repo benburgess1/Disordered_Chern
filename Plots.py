@@ -37,7 +37,7 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
         if bulk:
             mask = Calculations.bulk_eigenstate_mask(data['evects'], L=data['L'], **kwargs)
         else:
-            mask = np.full_like(E_vals, True)
+            mask = np.full_like(E_vals, True, dtype=bool)
         E_vals = E_vals[mask]
         x_val = float(data[x_param])
         x_pos = i if space_x else x_val
