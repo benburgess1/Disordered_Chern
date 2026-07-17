@@ -36,3 +36,19 @@ def V_hex_rot(x, y, beta=1, V=1, a=1, phi_1=0, phi_2=0, theta=0., **kwargs):
 
 def V_random(x, y, V=1, rng=np.random.default_rng(0), **kwargs):
     return V * (2 * rng.random() - 1)
+
+def V_hex_superlattice(x, y, V=1, n_i=5, n_j=5, i0=3, j0=3, a=1, **kwargs):
+    # Calculate site position in basis of lattice vectors (a1, a2)
+    G = 4 * np.pi / (np.sqrt(3) * a)
+    G1 = G * np.array([np.sqrt(3)/2, -1/2])
+    G2 = G * np.array([0, 1])
+    idx = np.array([G1, G2]) @ np.array([x, y]) / (2*np.pi)
+    # Rounding and tolerance used to eliminate small floating point errors.
+    # NB don't round to nearest integer since B sublattice points do not lie
+    # on integer lattice points.
+    i, j = np.round(idx, 2)
+    tol = 1e-3
+    if (i-i0) % n_i < tol or (j-j0) % n_j < tol:
+        return -V
+    else:
+        return 0

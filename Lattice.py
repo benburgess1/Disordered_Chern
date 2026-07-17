@@ -83,7 +83,7 @@ class Lattice(ABC):
                 cbar = fig.colorbar(plot, ticks=ticks)
                 cbar.ax.set_ylabel(r'$V$', rotation=0)
             if plot_V_onsite:
-                vmax = np.ceil(np.max([site.V for site in self.sites]))
+                vmax = np.ceil(np.max(np.abs([site.V for site in self.sites])))
                 norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
                 sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=norm)
                 sm.set_array([])
