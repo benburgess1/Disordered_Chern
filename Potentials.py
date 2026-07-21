@@ -46,9 +46,28 @@ def V_hex_superlattice(x, y, V=1, n_i=5, n_j=5, i0=3, j0=3, a=1, **kwargs):
     # Rounding and tolerance used to eliminate small floating point errors.
     # NB don't round to nearest integer since B sublattice points do not lie
     # on integer lattice points.
-    i, j = np.round(idx, 2)
+    idx = np.round(idx)
     tol = 1e-3
-    if (i-i0) % n_i < tol or (j-j0) % n_j < tol:
+    i, j = idx + tol
+    # print(i, j)
+    if (i-i0) % n_i < 2*tol or (j-j0) % n_j < 2*tol:
         return -V
     else:
         return 0
+    
+
+def V_hex_superlattice_alt(i, j, sublattice, V=1, n_i=5, n_j=5, i0=3, j0=3, a=1, **kwargs):
+    tol = 1e-3
+    i += tol
+    j += tol
+    if sublattice == 'A':
+        if (i-i0) % n_i < 2*tol or (j-j0) % n_j < 2*tol:
+            return -V
+        else:
+            return 0
+    elif sublattice == 'B':
+        if (i-i0+1) % n_i < 2*tol or (j-j0+1) % n_j < 2*tol:
+            return -V
+        else:
+            return 0
+

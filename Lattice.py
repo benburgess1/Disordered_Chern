@@ -41,9 +41,12 @@ class Lattice(ABC):
                 # as an attribute for each site and never needs to be recalculated.
                 seed = self.V_args['seed'] if 'seed' in self.V_args.keys() else None
                 rng = np.random.default_rng(seed=seed)
-                self.V_args['rng'] = rng
+                self.V_args['rng'] = rng    
             for site in self.sites:
-                site.V = self.V(*site.r, **self.V_args)
+                if self.V_name == 'V_hex_superlattice_alt':     # This potential takes unit cell index and sublattice as arguments, not site position
+                    site.V = self.V(*site.uc_idx, site.sublattice, **self.V_args)
+                else:
+                    site.V = self.V(*site.r, **self.V_args)
 
     def remove_site(self, site_idx):
         site = self.sites[site_idx]
