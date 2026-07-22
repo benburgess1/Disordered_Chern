@@ -62,13 +62,15 @@ class Lattice(ABC):
             site.site_idx = n
 
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
-                     plot_fig=False, plot_V_onsite=False, cmap_name='viridis'):
+                     plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
+                     suppress_ticks=True):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
         ax.set_aspect('equal')
-        ax.set_xticks([])
-        ax.set_yticks([])
+        if suppress_ticks:
+            ax.set_xticks([])
+            ax.set_yticks([])
         for site in self.sites:
             for neighbour in site.neighbours:
                 ax.plot([site.r[0], neighbour.r[0]], [site.r[1], neighbour.r[1]],
