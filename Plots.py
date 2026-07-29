@@ -220,7 +220,7 @@ def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax
         chern = data['chern_marker']
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
-    system.plot_lattice(ax=ax, ms=0, color='k')
+    system.plot_lattice(ax=ax, ms=0, color='k', **kwargs)
     if vmax is None:
         vmax = np.max(np.abs(chern))
     norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)

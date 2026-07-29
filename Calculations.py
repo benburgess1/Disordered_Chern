@@ -31,7 +31,7 @@ def calc_butterfly(phi_vals, L, calc_ipr=True, save=True, save_filename='Data/Bu
             np.savez(save_filename, phi_vals=phi_vals, E_vals=E_vals, L=L, **kwargs)
 
 
-def calc_chern_marker(evects, system, N_occ=None, E_max=None, E_vals=None):
+def calc_chern_marker(evects, system, N_occ=None, E_max=None, E_vals=None, **kwargs):
     """
     Compute the Bianco-Resta real-space Chern marker for each site.
 
