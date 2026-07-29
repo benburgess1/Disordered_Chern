@@ -43,7 +43,7 @@ class Lattice(ABC):
                 rng = np.random.default_rng(seed=seed)
                 self.V_args['rng'] = rng    
             for site in self.sites:
-                if self.V_name == 'V_hex_superlattice_alt':     # This potential takes unit cell index and sublattice as arguments, not site position
+                if self.V_name == 'V_hex_superlattice_alt' or self.V_name == 'V_hex_superlattice_random' or self.V_name == 'V_hex_superlattice_quasiperiodic':     # This potential takes unit cell index and sublattice as arguments, not site position
                     site.V = self.V(*site.uc_idx, site.sublattice, **self.V_args)
                 else:
                     site.V = self.V(*site.r, **self.V_args)
@@ -63,7 +63,7 @@ class Lattice(ABC):
 
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
-                     suppress_ticks=True):
+                     suppress_ticks=True, vmax=None, **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
@@ -88,7 +88,8 @@ class Lattice(ABC):
                 cbar = fig.colorbar(plot, ticks=ticks)
                 cbar.ax.set_ylabel(r'$V$', rotation=0)
             if plot_V_onsite:
-                vmax = np.ceil(np.max(np.abs([site.V for site in self.sites])))
+                if vmax is None:
+                    vmax = np.ceil(np.max(np.abs([site.V for site in self.sites])))
                 norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
                 sm = plt.cm.ScalarMappable(cmap=cmap_name, norm=norm)
                 sm.set_array([])
