@@ -56,18 +56,59 @@ def V_hex_superlattice(x, y, V=1, n_i=5, n_j=5, i0=3, j0=3, a=1, **kwargs):
         return 0
     
 
-def V_hex_superlattice_alt(i, j, sublattice, V=1, n_i=5, n_j=5, i0=3, j0=3, a=1, **kwargs):
+def V_hex_superlattice_alt(i, j, sublattice, V=1, n_i=5, n_j=5, i0=3, j0=3, i_vals=None,
+                           j_vals=None, L=30, **kwargs):
+    if i_vals is None:
+            i_vals = i0 + np.arange(0, L+1, n_i)
+    if j_vals is None:
+        j_vals = j0 + np.arange(0, L+1, n_j)
+    # tol = 1e-3
+    # i += tol
+    # j += tol
+    if sublattice == 'A':
+        if i in i_vals or j in j_vals:
+            return -V
+        else:
+            return 0
+    elif sublattice == 'B':
+        if i+1 in i_vals or j+1 in j_vals:
+            return -V
+        else:
+            return 0
+        
+
+def V_hex_superlattice_random(i, j, sublattice, V=1, n_i=5, n_j=5, i0=3, j0=3, rng=np.random.default_rng(0), 
+                              i_vals=None, j_vals=None, L=30, **kwargs):
+    if i_vals is None:
+        i_vals = i0 + np.arange(0, L+1, n_i)
+    if j_vals is None:
+        j_vals = j0 + np.arange(0, L+1, n_j)
+    # tol = 1e-3
+    # i += tol
+    # j += tol
+    if sublattice == 'A':
+        if i in i_vals or j in j_vals:
+            return 0
+        else:
+            return V * (2 * rng.random() - 1)
+    elif sublattice == 'B':
+        if i+1 in i_vals or j+1 in j_vals:
+            return 0
+        else:
+            return V * (2 * rng.random() - 1)
+
+
+def V_hex_superlattice_quasiperiodic(i, j, sublattice, V0=100, V=4, beta=1/np.sqrt(2), phi_1=0, phi_2=0, n_i=5, n_j=5, i0=3, j0=3, **kwargs):
     tol = 1e-3
     i += tol
     j += tol
     if sublattice == 'A':
         if (i-i0) % n_i < 2*tol or (j-j0) % n_j < 2*tol:
-            return -V
+            return 2*V * np.cos(2*np.pi*beta*i) * np.cos(2*np.pi*beta*j)
         else:
-            return 0
+            return V0
     elif sublattice == 'B':
         if (i-i0+1) % n_i < 2*tol or (j-j0+1) % n_j < 2*tol:
-            return -V
+            return 2*V * np.cos(2*np.pi*beta*(i+1/3)) * np.cos(2*np.pi*beta*(j+1/3))
         else:
-            return 0
-
+            return V0
