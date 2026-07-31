@@ -431,5 +431,89 @@ def bond_currents(H, eigenvectors, N_occ, check_kirchhoff=True, atol=1e-9):
                 f"H is not Hermitian, or eigenvectors/H use inconsistent "
                 f"conventions."
             )
-
     return I
+
+
+import numpy as np
+
+
+def chiral_edge_current(I, system=None, positions=None, edge_mask=None, center=None, tol=1e-10, **kwargs):
+    """
+    Compute the total chiral edge current: the sum, over all bonds lying
+    entirely within the edge region, of each bond's current weighted by
+    its chirality (anticlockwise/clockwise) about the lattice centre --
+    the same cross-product quantity used to colour bonds in
+    plot_bond_currents().
+
+    Parameters
+    ----------
+    I : (N, N) array
+        Full bond current matrix, I[j, i] = current from i to j (as
+        returned by bond_currents()).
+    system : Lattice object
+        System for which the edge current is to be calculated. Used to 
+        extract site positions and edge_mask. If not provided, then both 
+        positions and edge_mask must be provided separately.
+    positions : (N, 2) array
+        Real-space (x, y) coordinates of every site.
+    edge_mask : (N,) bool array
+        True for sites belonging to an edge unit cell, e.g.
+        edge_mask = ~system.get_bulk_mask(N_edge=1). Both the A and B
+        sites of an edge unit cell should be marked True.
+    center : (2,) array or None
+        Point to measure chirality about. Defaults to the centroid of all
+        `positions` (not just the edge sites) -- pass this explicitly if
+        that's not the right reference point for your geometry.
+    tol : float
+        Bonds with |I_ij| below this, or whose midpoint sits within `tol`
+        of `center`, are skipped (same as plot_bond_currents).
+
+    Returns
+    -------
+    total : float
+        Sum of the signed chirality-weighted current c_ij over every
+        unique edge-edge bond. Positive = net anticlockwise circulation,
+        negative = net clockwise, matching the red/blue convention in
+        plot_bond_currents.
+    """
+    if system is not None:
+        positions = np.array([site.r for site in system.sites])
+        edge_mask = ~system.get_bulk_mask(**kwargs)
+    else:
+        if positions is None:
+            raise ValueError('positions must be supplied if system is not supplied')
+        if edge_mask is None:
+            raise ValueError('edge_mask must be supplied if system is not supplied')
+    
+    if center is None:
+        center = positions.mean(axis=0)
+
+    edge_idx = np.where(edge_mask)[0]
+    total = 0.0
+
+    for a, i in enumerate(edge_idx):
+        for j in edge_idx[a + 1:]:
+            Iij = I[j, i]  # current i -> j
+            if abs(Iij) < tol:
+                continue
+
+            r_i, r_j = positions[i], positions[j]
+            bond_vec = r_j - r_i
+            bond_len = np.linalg.norm(bond_vec)
+            if bond_len < tol:
+                continue  # not actually a bond / duplicate position
+
+            mid = 0.5 * (r_i + r_j)
+            radial = mid - center
+            radial_norm = np.linalg.norm(radial)
+            if radial_norm < tol:
+                continue
+
+            bond_hat = bond_vec / bond_len
+            current_vec = Iij * bond_hat
+            cross_z = radial[0]*current_vec[1] - radial[1]*current_vec[0]
+            c = cross_z / radial_norm
+
+            total += c
+
+    return total

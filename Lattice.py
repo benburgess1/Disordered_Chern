@@ -103,7 +103,7 @@ class Lattice(ABC):
         return ax
 
     def get_bulk_mask(self, N_edge=1):
-        return [~site.near_edge(N_edge, self.L) for site in self.sites]
+        return np.array([~site.near_edge(N_edge, self.L) for site in self.sites], dtype=bool)
 
 
 class Haldane(Lattice):
