@@ -322,3 +322,114 @@ def bulk_eigenstate_mask(evects, L=None, N_edge=2, c=0.8, model=Haldane, **kwarg
     mask = system.get_bulk_mask(N_edge=N_edge)
     bulk_weights = np.sum(np.abs(evects[mask, :])**2, axis=0)
     return bulk_weights > c
+
+
+def bond_currents(H, eigenvectors, N_occ, check_kirchhoff=True, atol=1e-9):
+    """
+    Compute all equilibrium bond currents in a finite-size real-space lattice
+    model, from a filled Fermi sea of single-particle eigenstates.
+
+    Convention (matches the Hamiltonian convention used throughout Lattice/
+    Haldane/Hofstadter): H[j, i] is the hopping amplitude describing a
+    particle moving from site i to site j, i.e. the term in H is
+        H[j, i] * c_j^dagger c_i   (+ h.c. via H[i, j] = conj(H[j, i]))
+    The returned current matrix uses the SAME convention:
+        I[j, i] = equilibrium current flowing from site i to site j.
+    So I[j, i] > 0 means net particle flow i -> j, and I is antisymmetric,
+    I[j, i] = -I[i, j], as required for a single physical current per bond.
+
+    Derivation: for site-occupation continuity dn_i/dt = i[H, n_i], the bond
+    current operator between i and j is Hermitian only if it includes both
+    the i->j and j->i hopping terms. This gives the bond current operator along
+    i->j: 
+    
+        I_i->j = i(H_ij c_i^dagger c_j - H.c.)
+
+    For a single occupied eigenstate psi_n, the current contribution is:
+
+        I_i->j(n) = -2 * Im[ H_ij * conj(psi_n(i)) * psi_n(j)]
+    
+    Summing over occupied eigenstates, the currents along all bonds can be
+    efficiently computed in one shot via an elementwise (Hadamard) product with
+    the one-body density matrix of the occupied manifold:
+
+        I[i, j] = -2 * Im[ H[i, j] * conj(P[i, j]) ].T
+
+    where P is the one-body density matrix of the occupied manifold,
+        P[i, j] = sum_{n in occ} psi_n(i) * conj(psi_n(j))
+                = Psi_occ @ Psi_occ^dagger .
+
+    The transpose is required so that the element I[j,i] is the current FROM i TO j,
+    consistent with the convention of H_ji being the hopping matrix element FROM i TO j.
+
+    This gives every bond current in the lattice
+    simultaneously, in one O(N^2) pass, with zero entries automatically at
+    any (i, j) pair that isn't an actual bond (since H is zero there).
+
+    This definition is consistent with I_i->j = - del H / del phi_ji, where 
+    phi_ji = arg(H_ji) is the complex phase of hopping from i->j.
+
+    Parameters
+    ----------
+    H : (N, N) complex ndarray
+        Real-space Hamiltonian, Hermitian, using the H[j, i] = hop(i->j)
+        convention described above.
+    eigenvectors : (N, N) complex ndarray
+        Full eigenvector matrix from diagonalizing H (e.g. from
+        np.linalg.eigh(H)), columns are eigenstates, assumed already sorted
+        by ascending energy (as eigh returns them).
+    n_occ : int
+        Number of occupied single-particle states (e.g. N // 2 at half
+        filling). The first n_occ columns of `eigenvectors` are taken as
+        occupied.
+    check_kirchhoff : bool, default True
+        If True, assert that net current into every site vanishes
+        (row sums of I are ~0), as a correctness check on H and I. This is
+        cheap (O(N^2)) and catches Hamiltonian-construction or convention
+        bugs, so it's left on by default; set False only if you're calling
+        this in a tight loop (e.g. inside a phase-diagram sweep) and have
+        already validated the Hamiltonian construction elsewhere.
+    atol : float
+        Absolute tolerance for the Kirchhoff-law check.
+
+    Returns
+    -------
+    I : (N, N) complex ndarray (purely real up to floating point noise)
+        Full antisymmetric bond-current matrix. I[j, i] = current i -> j.
+        Zero at any (i, j) with no bond (H[j, i] == 0).
+        Returned as real via .real for convenience (imaginary part is
+        zero to floating-point precision by construction; not discarded
+        silently -- see note below).
+
+    Notes
+    -----
+    - Diagonal elements I[i, i] are exactly zero by construction (H has
+      zero diagonal for a hopping-only model; if you ever add on-site
+      terms, they don't contribute to bond currents anyway since the
+      derivation only uses off-diagonal H).
+    - To get the current along a specific bond (i, j), just index the
+      result: I[j, i]. No separate single-bond routine is needed -- this
+      always computes the full matrix in one shot, since the cost of doing
+      so is the same order as computing the density matrix P itself.
+    - At a given k-independent filling this is the direct real-space
+      analogue of the Bloch-space Hellmann-Feynman bond current
+      -dE/dphi discussed earlier: P plays the role the occupied Bloch
+      eigenvector played there.
+    """
+    Psi_occ = eigenvectors[:, :N_occ]
+    P = Psi_occ @ Psi_occ.conj().T  # P[i, j] = sum_n psi_n(i) psi_n*(j)
+
+    I = -2.0 * np.imag(H * P.conj()).T  # elementwise (Hadamard) product, NOT matmul
+
+    if check_kirchhoff:
+        row_sums = I.sum(axis=1)
+        max_violation = np.max(np.abs(row_sums))
+        if max_violation > atol:
+            raise ValueError(
+                f"Kirchhoff's law violated: max |sum_i I[j,i]| = "
+                f"{max_violation:.3e} > atol={atol:.1e}. This usually means "
+                f"H is not Hermitian, or eigenvectors/H use inconsistent "
+                f"conventions."
+            )
+
+    return I

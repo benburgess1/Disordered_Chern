@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.collections import LineCollection
 import numpy as np
 import Lattice
 import Calculations
@@ -498,3 +499,115 @@ def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
     ax.legend(title=legend_title)
     ax.set_title(make_title_str(data, base_str='Sublattice polarization', params=title_params))
     plt.show()
+
+
+def plot_bond_currents(positions, I, ax=None, cmap='RdBu_r', tol=1e-10,
+                        lw_scale=8.0, min_lw=0.5, colorbar=True,
+                        center=None, title=None):
+    """
+    Plot equilibrium bond currents on a finite-size lattice.
+
+    Each bond is drawn once (I is antisymmetric, so only i<j is needed) and
+    coloured by its CHIRALITY about the lattice centre -- i.e. whether the
+    physical current at that bond circulates anticlockwise (red, +) or
+    clockwise (blue, -) around the centre of the flake -- with linewidth set
+    by the current magnitude |I_ij|. This is deliberately chosen over:
+      - a fixed x/y colour convention, which isn't well defined for bonds
+        that don't lie along a single global axis (true of essentially any
+        honeycomb/NNN lattice), and
+      - arrows on every bond, which get cluttered fast once you have more
+        than a few dozen bonds, especially near the edges where currents
+        (and bond density) are largest -- exactly where you want the most
+        clarity, not the least.
+    For a clean topological/Chern-insulator flake this should produce a
+    strong, uniformly-coloured ring of one chirality around the boundary,
+    fading to near-white in the gapped bulk -- directly and immediately
+    readable at a glance, which is the point.
+
+    Parameters
+    ----------
+    positions : (N, 2) array
+        Real-space (x, y) coordinates of each site.
+    I : (N, N) array
+        Bond current matrix from bond_currents(): I[j, i] = current i -> j.
+    center : (2,) array or None
+        Point to measure chirality about. Defaults to the centroid of
+        `positions`. Pass this explicitly if your flake isn't centred at
+        its own centroid (e.g. an irregular or partially-disordered shape)
+        and you want chirality measured about a specific reference point
+        (e.g. the geometric centre of the original regular lattice).
+    tol : float
+        Bonds with |I_ij| below this are skipped entirely (keeps the
+        LineCollection small and avoids drawing near-invisible bulk bonds).
+    lw_scale, min_lw : float
+        Linewidth = min_lw + lw_scale * (|I_ij| / max|I_ij|).
+
+    Returns
+    -------
+    fig, ax, colors : the figure, axes, and the raw signed chirality-current
+        array (in case you want it for further analysis, e.g. histogramming
+        edge vs. bulk current magnitudes).
+    """
+    N = positions.shape[0]
+    if center is None:
+        center = positions.mean(axis=0)
+
+    segments, colors, mags = [], [], []
+
+    for i in range(N):
+        for j in range(i + 1, N):
+            Iij = I[j, i]  # current i -> j
+            if abs(Iij) < tol:
+                continue
+
+            r_i, r_j = positions[i], positions[j]
+            bond_vec = r_j - r_i
+            bond_len = np.linalg.norm(bond_vec)
+            if bond_len < tol:
+                continue  # degenerate/duplicate site position, skip
+            bond_hat = bond_vec / bond_len
+
+            mid = 0.5 * (r_i + r_j)
+            radial = mid - center
+            radial_norm = np.linalg.norm(radial)
+            if radial_norm < tol:
+                continue  # bond sits exactly at the centre point
+
+            current_vec = Iij * bond_hat        # physical current, correct sign/direction
+            cross_z = radial[0] * current_vec[1] - radial[1] * current_vec[0]
+            c = cross_z / radial_norm            # sign = chirality, |c| <= |Iij|
+
+            segments.append([r_i, r_j])
+            colors.append(c)
+            mags.append(abs(Iij))
+
+    if not segments:
+        raise ValueError("No bonds above tol -- check I, positions, or tol.")
+
+    colors = np.array(colors)
+    mags = np.array(mags)
+    vmax = np.abs(colors).max()
+    lw = min_lw + lw_scale * (mags / mags.max())
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+    else:
+        fig = ax.figure
+
+    lc = LineCollection(segments, array=colors, cmap=cmap,
+                         norm=plt.Normalize(-vmax, vmax), linewidths=lw)
+    ax.add_collection(lc)
+    ax.scatter(positions[:, 0], positions[:, 1], color='k', s=15, zorder=3)
+    pad = 1.0
+    ax.set_xlim(positions[:, 0].min() - pad, positions[:, 0].max() + pad)
+    ax.set_ylim(positions[:, 1].min() - pad, positions[:, 1].max() + pad)
+    ax.set_aspect('equal')
+    ax.axis('off')
+    if title:
+        ax.set_title(title)
+
+    if colorbar:
+        cb = fig.colorbar(lc, ax=ax, shrink=0.8)
+        cb.set_label('current chirality (red = anticlockwise, blue = clockwise)')
+
+    return fig, ax, colors

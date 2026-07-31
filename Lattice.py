@@ -100,6 +100,7 @@ class Lattice(ABC):
                 cbar.set_label(r'$V(\mathbf{r})$', rotation=0)
         if plot_fig:
             plt.show()
+        return ax
 
     def get_bulk_mask(self, N_edge=1):
         return [~site.near_edge(N_edge, self.L) for site in self.sites]
