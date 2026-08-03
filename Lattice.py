@@ -63,7 +63,8 @@ class Lattice(ABC):
 
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
-                     suppress_ticks=True, vmax=None, **kwargs):
+                     suppress_ticks=True, vmax=None, zorder=3, lw=1, plot_next_neighbours=False, 
+                     **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
@@ -74,7 +75,11 @@ class Lattice(ABC):
         for site in self.sites:
             for neighbour in site.neighbours:
                 ax.plot([site.r[0], neighbour.r[0]], [site.r[1], neighbour.r[1]],
-                        marker='o', color=color, ms=ms, ls='-')
+                        marker='o', color=color, ms=ms, ls='-', lw=lw, zorder=zorder)
+            if plot_next_neighbours:
+                for neighbour in site.next_neighbours:
+                    ax.plot([site.r[0], neighbour.r[0]], [site.r[1], neighbour.r[1]],
+                            marker=None, color=color, ms=ms, ls=':', lw=lw, zorder=zorder)
         if (plot_V or plot_V_onsite) and self.V is not None:
             r_all = np.array([site.r for site in self.sites])
             x = np.linspace(r_all[:, 0].min() - p, r_all[:, 0].max() + p, Nx)
@@ -84,7 +89,7 @@ class Lattice(ABC):
                 V = self.V(xx, yy, **self.V_args)
                 levels = np.linspace(np.min(V), np.max(V), 200)
                 ticks = [np.min(V), 0, np.max(V)]
-                plot = ax.contourf(xx, yy, V, cmap=plt.colormaps[cmap_name], levels=levels)
+                plot = ax.contourf(xx, yy, V, cmap=plt.colormaps[cmap_name], levels=levels, zorder=zorder-1)
                 cbar = fig.colorbar(plot, ticks=ticks)
                 cbar.ax.set_ylabel(r'$V$', rotation=0)
             if plot_V_onsite:
@@ -95,7 +100,7 @@ class Lattice(ABC):
                 sm.set_array([])
                 for site in self.sites:
                     c = plt.get_cmap(cmap_name)(norm(site.V))
-                    ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
+                    ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=zorder)
                 cbar = fig.colorbar(sm, ax=ax)
                 cbar.set_label(r'$V(\mathbf{r})$', rotation=0)
         if plot_fig:
@@ -104,6 +109,108 @@ class Lattice(ABC):
 
     def get_bulk_mask(self, N_edge=1):
         return np.array([~site.near_edge(N_edge, self.L) for site in self.sites], dtype=bool)
+
+
+class Ladder(Lattice):
+    def __init__(self, L, t_AA_mag=1, t=1, alpha=np.pi/10, t_AB_mag=0.2, a=1, 
+                 V=None, V_args={}, show_progress=True, **kwargs):
+        super().__init__(L=L, t=t, a=a, V=V, V_args=V_args,
+                         show_progress=show_progress, **kwargs)
+        self.t_AA_mag = t_AA_mag
+        self.alpha = alpha
+        self.t_AA = self.t_AA_mag * np.exp(1j * (np.pi/2 - self.alpha))
+        self.t_BB = -self.t_AA
+        self.t_AB_mag = t_AB_mag
+        self.t_AB = self.t_AB_mag * 1j
+        self.t_BA = self.t_AB
+        self.a1 = self.a * np.array([1, 0])
+        self.b1 = self.a * np.array([0, -1])
+        self.N_sublattice = 2
+        self.build_lattice()
+        self.set_potentials()
+        self.save_dict = self.build_save_dict()
+
+    def build_lattice(self):
+        with _progress(total=self.L, desc='Building lattice', show=self.show_progress) as pbar:
+            for i in range(self.L):
+                r_uc = i * self.a1
+                site_A = Site(r=r_uc, uc_idx=np.array([i]), sublattice='A', site_idx=2*i)
+                site_B = Site(r=r_uc+self.b1, uc_idx=np.array([i]), sublattice='B', site_idx=2*i+1)
+                # Add neighbours - not distinguishing between A/B sites and same/different unit cell
+                # here; that will be handled in the building of the Hamiltonian
+                site_A.add_neighbour(site_B)
+                if i > 0:
+                    site_A.add_neighbour(self.sites[2*(i-1)])
+                    site_B.add_neighbour(self.sites[2*(i-1)+1])
+                    site_A.add_next_neighbour(self.sites[2*(i-1)+1])
+                    site_B.add_next_neighbour(self.sites[2*(i-1)])
+                self.sites.append(site_A)
+                self.sites.append(site_B)
+                if pbar: pbar.update(1)
+
+    def calc_H(self):
+        N = len(self.sites)
+        H = np.zeros((N, N), dtype=np.complex128)
+        with _progress(total=N, desc='Building Hamiltonian', show=self.show_progress) as pbar:
+            for site in self.sites:
+                # Hopping to neighbours
+                for neighbour in site.neighbours:
+                    # Difference in unit cell index
+                    d = int(neighbour.uc_idx[0] - site.uc_idx[0])
+                    # Intra-cell hopping
+                    if d == 0:
+                        H[neighbour.site_idx, site.site_idx] = self.t
+                    # Inter-cell hopping:
+                    elif d == 1:
+                        if site.sublattice == 'A' and neighbour.sublattice == 'A':
+                            H[neighbour.site_idx, site.site_idx] = self.t_AA
+                        elif site.sublattice == 'B' and neighbour.sublattice == 'B':
+                            H[neighbour.site_idx, site.site_idx] = self.t_BB
+                    elif d == -1:
+                        if site.sublattice == 'A' and neighbour.sublattice == 'A':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AA)
+                        elif site.sublattice == 'A' and neighbour.sublattice == 'B':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AB)
+                        elif site.sublattice == 'B' and neighbour.sublattice == 'A':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BA)
+                        elif site.sublattice == 'B' and neighbour.sublattice == 'B':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BB)
+                for neighbour in site.next_neighbours:
+                    d = int(neighbour.uc_idx[0] - site.uc_idx[0])
+                    if d == 1:
+                        if site.sublattice == 'A' and neighbour.sublattice == 'B':
+                            H[neighbour.site_idx, site.site_idx] = self.t_AB
+                        elif site.sublattice == 'B' and neighbour.sublattice == 'A':
+                            H[neighbour.site_idx, site.site_idx] = self.t_BA
+                    elif d == -1:
+                        if site.sublattice == 'A' and neighbour.sublattice == 'B':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AB)
+                        elif site.sublattice == 'B' and neighbour.sublattice == 'A':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BA)
+                # On-site potential
+                if self.V is not None:
+                    H[site.site_idx, site.site_idx] += site.V
+                if pbar: pbar.update(1)
+        return H
+
+    def build_save_dict(self):
+        save_dict = {
+            't':                self.t,
+            't_AA':             self.t_AA,
+            't_BB':             self.t_BB,
+            't_AA_mag':         self.t_AA_mag,
+            't_AB':             self.t_AB,
+            't_BA':             self.t_BA,
+            't_AB_mag':         self.t_AB_mag,
+            'alpha':            self.alpha,
+            'L':                self.L,
+            'a':                self.a,
+            'V_name':           self.V_name,
+        }
+        for p in ['V', 'beta', 'phi_1', 'phi_2', 'theta']:
+            if p in self.V_args.keys():
+                save_dict[p] = self.V_args[p]
+        return save_dict
 
 
 class Haldane(Lattice):
