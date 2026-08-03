@@ -324,7 +324,7 @@ def bulk_eigenstate_mask(evects, L=None, N_edge=2, c=0.8, model=Haldane, **kwarg
     return bulk_weights > c
 
 
-def bond_currents(H, eigenvectors, N_occ, check_kirchhoff=True, atol=1e-9):
+def bond_currents(H, eigenvectors, N_occ=None, E_F=None, E_vals=None, check_kirchhoff=True, atol=1e-9):
     """
     Compute all equilibrium bond currents in a finite-size real-space lattice
     model, from a filled Fermi sea of single-particle eigenstates.
@@ -378,10 +378,16 @@ def bond_currents(H, eigenvectors, N_occ, check_kirchhoff=True, atol=1e-9):
         Full eigenvector matrix from diagonalizing H (e.g. from
         np.linalg.eigh(H)), columns are eigenstates, assumed already sorted
         by ascending energy (as eigh returns them).
-    n_occ : int
+    N_occ : int, default None
         Number of occupied single-particle states (e.g. N // 2 at half
         filling). The first n_occ columns of `eigenvectors` are taken as
         occupied.
+    E_F : float, default None
+        Fermi energy to determine occupied states. Either N_occ or E_F must 
+        be supplied.
+    E_vals : (N,) real ndarray
+        Array of energy eigenvalues used with E_F to determine occupied
+        states. Must be supplied if E_F is supplied.
     check_kirchhoff : bool, default True
         If True, assert that net current into every site vanishes
         (row sums of I are ~0), as a correctness check on H and I. This is
@@ -416,7 +422,14 @@ def bond_currents(H, eigenvectors, N_occ, check_kirchhoff=True, atol=1e-9):
       -dE/dphi discussed earlier: P plays the role the occupied Bloch
       eigenvector played there.
     """
-    Psi_occ = eigenvectors[:, :N_occ]
+    if N_occ is not None:
+        Psi_occ = eigenvectors[:, :N_occ]
+    elif E_F is not None:
+        if E_vals is None:
+            raise ValueError('E_vals must be supplied if E_F is supplied')
+        Psi_occ = eigenvectors[:, E_vals<=E_F]
+    else:
+        raise ValueError('Either N_occ, or both E_F and E_vals, must be supplied')
     P = Psi_occ @ Psi_occ.conj().T  # P[i, j] = sum_n psi_n(i) psi_n*(j)
 
     I = -2.0 * np.imag(H * P.conj()).T  # elementwise (Hadamard) product, NOT matmul

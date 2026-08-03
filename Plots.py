@@ -221,7 +221,7 @@ def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax
         chern = data['chern_marker']
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
-    system.plot_lattice(ax=ax, ms=0, color='k', **kwargs)
+    system.plot_lattice(ax=ax, ms=0, color='k', zorder=3, **kwargs)
     if vmax is None:
         vmax = np.max(np.abs(chern))
     norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
@@ -229,7 +229,7 @@ def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax
     sm.set_array([])
     for site in system.sites:
         c = plt.get_cmap(cmap)(norm(chern[site.site_idx]))
-        ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
+        ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=4)
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(r'$C(\mathbf{r})$', rotation=0)
     title_str = 'Chern Marker'
@@ -501,9 +501,9 @@ def plot_polarization_vs_E(filenames, legend_param='V', legend_title=None,
     plt.show()
 
 
-def plot_bond_currents(positions, I, ax=None, cmap='RdBu_r', tol=1e-10,
-                        lw_scale=8.0, min_lw=0.5, colorbar=True,
-                        center=None, title=None):
+def plot_bond_currents(I, positions=None, system=None, ax=None, cmap='RdBu_r', tol=1e-10,
+                        lw_scale=8.0, min_lw=0., colorbar=True,
+                        center=None, title=None, plot_fig=True, **kwargs):
     """
     Plot equilibrium bond currents on a finite-size lattice.
 
@@ -526,10 +526,13 @@ def plot_bond_currents(positions, I, ax=None, cmap='RdBu_r', tol=1e-10,
 
     Parameters
     ----------
-    positions : (N, 2) array
-        Real-space (x, y) coordinates of each site.
     I : (N, N) array
         Bond current matrix from bond_currents(): I[j, i] = current i -> j.
+    system : Lattice object
+        Used to obtain lattice site positions and plot the lattice. 
+    positions : (N, 2) array
+        Real-space (x, y) coordinates of each site. Must be supplied if system
+        is not supplied.
     center : (2,) array or None
         Point to measure chirality about. Defaults to the centroid of
         `positions`. Pass this explicitly if your flake isn't centred at
@@ -541,6 +544,8 @@ def plot_bond_currents(positions, I, ax=None, cmap='RdBu_r', tol=1e-10,
         LineCollection small and avoids drawing near-invisible bulk bonds).
     lw_scale, min_lw : float
         Linewidth = min_lw + lw_scale * (|I_ij| / max|I_ij|).
+    plot_fig : bool, default True
+        Plot the figure once constructed.
 
     Returns
     -------
@@ -548,6 +553,8 @@ def plot_bond_currents(positions, I, ax=None, cmap='RdBu_r', tol=1e-10,
         array (in case you want it for further analysis, e.g. histogramming
         edge vs. bulk current magnitudes).
     """
+    if system is not None:
+        positions = np.array([site.r for site in system.sites])
     N = positions.shape[0]
     if center is None:
         center = positions.mean(axis=0)
@@ -590,24 +597,32 @@ def plot_bond_currents(positions, I, ax=None, cmap='RdBu_r', tol=1e-10,
     lw = min_lw + lw_scale * (mags / mags.max())
 
     if ax is None:
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, ax = plt.subplots(figsize=(9, 5))
     else:
         fig = ax.figure
+
+    if system is not None:
+        system.plot_lattice(ax=ax, **kwargs)
+    else:
+        ax.scatter(positions[:, 0], positions[:, 1], color='k', s=15, zorder=3)
 
     lc = LineCollection(segments, array=colors, cmap=cmap,
                          norm=plt.Normalize(-vmax, vmax), linewidths=lw)
     ax.add_collection(lc)
-    ax.scatter(positions[:, 0], positions[:, 1], color='k', s=15, zorder=3)
+    ax.scatter([center[0]], [center[1]], marker='D', s=40, c='gold', edgecolors='k', zorder=5)
     pad = 1.0
     ax.set_xlim(positions[:, 0].min() - pad, positions[:, 0].max() + pad)
     ax.set_ylim(positions[:, 1].min() - pad, positions[:, 1].max() + pad)
     ax.set_aspect('equal')
-    ax.axis('off')
+    # ax.axis('off')
     if title:
         ax.set_title(title)
 
     if colorbar:
         cb = fig.colorbar(lc, ax=ax, shrink=0.8)
         cb.set_label('current chirality (red = anticlockwise, blue = clockwise)')
+
+    if plot_fig:
+        plt.show()
 
     return fig, ax, colors
