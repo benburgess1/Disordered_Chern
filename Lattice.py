@@ -64,11 +64,12 @@ class Lattice(ABC):
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
                      suppress_ticks=True, vmax=None, zorder=3, lw=1, plot_next_neighbours=False, 
+                     aspect='equal',
                      **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
-        ax.set_aspect('equal')
+        ax.set_aspect(aspect)
         if suppress_ticks:
             ax.set_xticks([])
             ax.set_yticks([])
@@ -192,6 +193,76 @@ class Ladder(Lattice):
                     H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
         return H
+
+    def calc_Py(self, average=True):
+        """
+        Calculate and return the y-polarisation operator:
+            Py = sum_jm (-1)^m n_jm
+        where j indexes unit cells, m indexes legs ('spin' states), n_jm is 
+        a density operator, and (-1)^m is positive (negative) for sites on the 
+        upper (lower) leg. 
+        If average=True, calculates the average polarisation per unit cell.
+        """
+        sz = np.array([[1, 0],
+                       [0, -1]])
+        Py = np.kron(np.eye(self.L), sz)
+        if average:
+            Py /= self.L
+        return Py
+
+
+    def calc_Jx(self, i=None):
+        """
+        Calculate and return the operator giving current in the +x direction,
+        evaluated between the two unit cells in the centre of the system.
+        Takes into account t_AA, t_BB, t_AB and t_BA hoppings, but not 
+        intra-cell t hopping which is purely in the y direction.
+        Could be generalised to give currents between all unit cells, but this
+        will suffice for initial purposes.
+        """
+        if i is None:
+            i = int(np.floor(self.L/2) - 1)
+        j = i + 1
+        N = len(self.sites)
+        Jx = np.zeros((N, N), dtype=np.complex128)
+        # AA hopping
+        Jx[2*j, 2*i] = -1j * self.t_AA
+        # AB hopping
+        Jx[2*j+1, 2*i] = -1j * self.t_AB
+        # BA hopping
+        Jx[2*j, 2*i+1] = -1j * self.t_BA
+        # BB hopping
+        Jx[2*j+1, 2*i+1] = -1j * self.t_BB
+        # Add Hermitian conjugate terms
+        Jx += Jx.conj().T
+        return Jx
+
+    
+    def calc_Jx_tot(self, average=True):
+        """
+        Calculate and return the operator giving total current in the +x direction,
+        summed and optionally averaged over all unit cells in the system.
+        Takes into account t_AA, t_BB, t_AB and t_BA hoppings, but not 
+        intra-cell t hopping which is purely in the y direction.
+        """
+        N = len(self.sites)
+        Jx = np.zeros((N, N), dtype=np.complex128)
+        for i in range(self.L-1):
+            j = i + 1
+            # AA hopping
+            Jx[2*j, 2*i] = -1j * self.t_AA
+            # AB hopping
+            Jx[2*j+1, 2*i] = -1j * self.t_AB
+            # BA hopping
+            Jx[2*j, 2*i+1] = -1j * self.t_BA
+            # BB hopping
+            Jx[2*j+1, 2*i+1] = -1j * self.t_BB
+        # Add Hermitian conjugate terms
+        Jx += Jx.conj().T
+        if average:
+            Jx /= self.L
+        return Jx
+
 
     def build_save_dict(self):
         save_dict = {
