@@ -11,8 +11,17 @@ def _progress(total, desc, show):
 
 
 class Lattice(ABC):
-    def __init__(self, L, t=1, a=1, V=None, V_args={}, show_progress=True, **kwargs):
-        self.L = L
+    def __init__(self, L=None, Lx=None, Ly=None, t=1, a=1, V=None, V_args={}, show_progress=True, **kwargs):
+        if L is not None:
+            self.L = L
+            self.Lx = L
+            self.Ly = L
+        elif Lx is not None and Ly is not None:
+            self.L = Lx         # For convenience to avoid rewriting lots of code
+            self.Lx = Lx
+            self.Ly = Ly
+        else:
+            raise ValueError('Either L, or both Lx and Ly, must be supplied')
         self.t = t
         self.a = a
         self.V = V
@@ -64,12 +73,15 @@ class Lattice(ABC):
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
                      suppress_ticks=True, vmax=None, zorder=3, lw=1, plot_next_neighbours=False, 
-                     aspect='equal',
+                     aspect='equal', pad=0.5,
                      **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
         ax.set_aspect(aspect)
+        positions = np.array([site.r for site in self.sites])
+        ax.set_xlim(np.min(positions[:,0] - pad), np.max(positions[:,0] + pad))
+        ax.set_ylim(np.min(positions[:,1] - pad), np.max(positions[:,1] + pad))
         if suppress_ticks:
             ax.set_xticks([])
             ax.set_yticks([])
@@ -285,9 +297,9 @@ class Ladder(Lattice):
 
 
 class Haldane(Lattice):
-    def __init__(self, L, t=1, m=0, t2=0.5j, a=1, exclude_endsites=False,
+    def __init__(self, L=None, Lx=None, Ly=None, t=1, m=0, t2=0.5j, a=1, exclude_endsites=False,
                  V=None, V_args={}, show_progress=True, **kwargs):
-        super().__init__(L=L, t=t, a=a, V=V, V_args=V_args,
+        super().__init__(L=L, Lx=Lx, Ly=Ly, t=t, a=a, V=V, V_args=V_args,
                          show_progress=show_progress, **kwargs)
         self.t2 = t2
         self.m = m
@@ -303,34 +315,34 @@ class Haldane(Lattice):
         self.save_dict = self.build_save_dict()
 
     def build_lattice(self):
-        with _progress(total=self.L**2, desc='Building lattice', show=self.show_progress) as pbar:
-            for i in range(self.L):
-                for j in range(self.L):
+        with _progress(total=self.Lx*self.Ly, desc='Building lattice', show=self.show_progress) as pbar:
+            for i in range(self.Lx):
+                for j in range(self.Ly):
                     r_uc = i * self.a1 + j * self.a2
-                    site_A = Site(r=r_uc, uc_idx=np.array([i, j]), sublattice='A', site_idx=i*2*self.L+2*j)
-                    site_B = Site(r=r_uc+self.b1, uc_idx=np.array([i, j]), sublattice='B', site_idx=i*2*self.L+2*j+1)
+                    site_A = Site(r=r_uc, uc_idx=np.array([i, j]), sublattice='A', site_idx=i*2*self.Ly+2*j)
+                    site_B = Site(r=r_uc+self.b1, uc_idx=np.array([i, j]), sublattice='B', site_idx=i*2*self.Ly+2*j+1)
                     # Add near neighbours
                     site_A.add_neighbour(site_B)
                     if j > 0:
-                        site_A.add_neighbour(self.sites[i*2*self.L+2*j-1])
+                        site_A.add_neighbour(self.sites[i*2*self.Ly+2*j-1])
                     if i > 0:
-                        site_A.add_neighbour(self.sites[2*(i-1)*self.L+2*j+1])
+                        site_A.add_neighbour(self.sites[2*(i-1)*self.Ly+2*j+1])
                     # Add next-near neighbours
                     if j > 0:
-                        site_A.add_next_neighbour(self.sites[i*2*self.L+2*(j-1)])
-                        site_B.add_next_neighbour(self.sites[i*2*self.L+2*(j-1)+1])
+                        site_A.add_next_neighbour(self.sites[i*2*self.Ly+2*(j-1)])
+                        site_B.add_next_neighbour(self.sites[i*2*self.Ly+2*(j-1)+1])
                     if i > 0:
-                        site_A.add_next_neighbour(self.sites[(i-1)*2*self.L+2*j])
-                        site_B.add_next_neighbour(self.sites[(i-1)*2*self.L+2*j+1])
-                        if j < self.L-1:
-                            site_A.add_next_neighbour(self.sites[(i-1)*2*self.L+2*(j+1)])
-                            site_B.add_next_neighbour(self.sites[(i-1)*2*self.L+2*(j+1)+1])
+                        site_A.add_next_neighbour(self.sites[(i-1)*2*self.Ly+2*j])
+                        site_B.add_next_neighbour(self.sites[(i-1)*2*self.Ly+2*j+1])
+                        if j < self.Ly-1:
+                            site_A.add_next_neighbour(self.sites[(i-1)*2*self.Ly+2*(j+1)])
+                            site_B.add_next_neighbour(self.sites[(i-1)*2*self.Ly+2*(j+1)+1])
                     self.sites.append(site_A)
                     self.sites.append(site_B)
                     if pbar: pbar.update(1)
         if self.exclude_endsites:
             self.remove_site(0)
-            self.remove_site(2*self.L**2 - 2)    # -2 since already removed the first site
+            self.remove_site(2*self.Lx*self.Ly - 2)    # -2 since already removed the first site
 
     def calc_H(self):
         N = len(self.sites)
@@ -368,6 +380,8 @@ class Haldane(Lattice):
             'phi':              np.angle(self.t2),
             'm':                self.m,
             'L':                self.L,
+            'Lx':               self.Lx,
+            'Ly':               self.Ly,
             'a':                self.a,
             'exclude_endsites': self.exclude_endsites,
             'V_name':           self.V_name,
