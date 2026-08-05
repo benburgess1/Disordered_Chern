@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 from tqdm import tqdm
 from Lattice import Hofstadter, Haldane
 
@@ -530,3 +531,84 @@ def chiral_edge_current(I, system=None, positions=None, edge_mask=None, center=N
             total += c
 
     return total
+
+
+def time_evolve(psi0, U=None, **kwargs):
+    if U is None:
+        U = calc_U(**kwargs)
+    return U @ psi0
+
+
+def calc_U(H, t):
+    return sp.linalg.expm(-1j * H * t)
+
+
+def perform_time_evolution(Psi_occ0, t_vals, H, ops, return_psi=False, **kwargs):
+    """
+    Time-evolve a filled Fermi sea (Slater determinant) of non-interacting
+    fermions under a single-particle Hamiltonian H, and compute one-body
+    operator expectation values along the way.
+
+    Each occupied orbital evolves independently under U(t) = exp(-iHt):
+        Psi_occ(t) = U(t) @ Psi_occ(0)
+    and for any one-body operator O (an (N, N) matrix, e.g. a bond current
+    operator or density operator),
+        <O>(t) = Tr[ Psi_occ(t)^dagger @ O @ Psi_occ(t) ]
+              = sum_n <phi_n(t)| O |phi_n(t)>
+    This is the correct many-body expectation value for a Slater
+    determinant -- NOT psi0^dagger O psi0 for a single summed vector,
+    which mixes cross terms between different (physically non-coherent)
+    occupied orbitals and is gauge-dependent on their relative phases.
+
+    Parameters
+    ----------
+    Psi_occ0 : (N, N_occ) complex ndarray
+        The occupied single-particle orbitals at t=0 (columns = orbitals),
+        e.g. Psi_occ0 = evects[:, evals <= E_F].
+    t_vals : (n_t,) array
+        Times to evaluate at (assumed uniformly spaced; dt = t_vals[1]-t_vals[0]).
+    H : (N, N) complex ndarray
+        Hamiltonian generating the dynamics (may differ from whatever
+        Hamiltonian Psi_occ0 was the ground state of, e.g. for a quench).
+    ops : sequence of (N, N) arrays
+        One-body operators to evaluate expectation values of at each t.
+    return_psi : bool
+        If True, also return the full trajectory of occupied orbitals.
+
+    Returns
+    -------
+    op_vals : (len(ops), n_t) complex ndarray
+        <op>(t) for each operator and time (expectation values of Hermitian
+        operators in a physical state will be real up to floating point
+        noise -- take .real if you want to enforce that explicitly).
+    Psi_vals : (N, N_occ, n_t) complex ndarray, only if return_psi=True
+        Psi_occ(t) at each time.
+    """
+    dt = t_vals[1] - t_vals[0]
+    print('Calculating U... ', end='', flush=True)
+    U = calc_U(H, dt)
+    print('Done')
+
+    def expect(Psi):
+        # Tr[Psi^dag O Psi] for each op, done as a small (N_occ x N_occ) trace
+        return np.array([np.trace(Psi.conj().T @ op @ Psi) for op in ops])
+
+    op_vals = np.zeros((len(ops), t_vals.size), dtype=np.complex128)
+    Psi = Psi_occ0.copy()
+    op_vals[:, 0] = expect(Psi)
+
+    if return_psi:
+        N, n_occ = Psi_occ0.shape
+        Psi_vals = np.zeros((N, n_occ, t_vals.size), dtype=np.complex128)
+        Psi_vals[:, :, 0] = Psi
+
+    for i in tqdm(range(1, t_vals.size), desc='Performing time-evolution'):
+        Psi = U @ Psi
+        if return_psi:
+            Psi_vals[:, :, i] = Psi
+        op_vals[:, i] = expect(Psi)
+
+    if return_psi:
+        return op_vals, Psi_vals
+    else:
+        return op_vals
