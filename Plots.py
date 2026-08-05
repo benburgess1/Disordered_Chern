@@ -142,8 +142,8 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
     plt.show()
 
 
-def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, L=30, cmap=None, ms=5, log=False, max_orders=None,
-                    title_str='', plot_quantity='abs', fix_gauge=True):
+def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Lattice.Haldane, L=30, cmap=None, ms=5, log=False, max_orders=None,
+                    title_str='', plot_quantity='abs', fix_gauge=True, **kwargs):
     if psi is None:
         if filename is None:
             raise ValueError('Either state psi or filename and index must be specified')
@@ -187,10 +187,11 @@ def plot_eigenstate(psi=None, filename=None, index=None, model=Lattice.Haldane, 
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
 
-    system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'] if filename is not None else False)
+    if system is None:
+        system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'] if filename is not None else False)
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
-    system.plot_lattice(ax=ax, ms=0, color='k')
+    system.plot_lattice(ax=ax, ms=0, color='k', **kwargs)
 
     for site in system.sites:
         c = plt.get_cmap(cmap)(norm(z[site.site_idx]))
