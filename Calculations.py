@@ -448,9 +448,6 @@ def bond_currents(H, eigenvectors, N_occ=None, E_F=None, E_vals=None, check_kirc
     return I
 
 
-import numpy as np
-
-
 def chiral_edge_current(I, system=None, positions=None, edge_mask=None, center=None, tol=1e-10, **kwargs):
     """
     Compute the total chiral edge current: the sum, over all bonds lying

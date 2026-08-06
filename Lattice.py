@@ -125,17 +125,24 @@ class Lattice(ABC):
 
 
 class Ladder(Lattice):
-    def __init__(self, L, t_AA_mag=1, t=1, alpha=np.pi/10, t_AB_mag=0.2, a=1, 
+    def __init__(self, L, t_AA_mag=1., phi_AA=0., t_BB_mag=1., phi_BB=0., 
+                 t_AB_mag=0., phi_AB=0., t_BA_mag=0., phi_BA=0., 
+                 t=1, a=1, 
                  V=None, V_args={}, show_progress=True, **kwargs):
         super().__init__(L=L, t=t, a=a, V=V, V_args=V_args,
                          show_progress=show_progress, **kwargs)
         self.t_AA_mag = t_AA_mag
-        self.alpha = alpha
-        self.t_AA = self.t_AA_mag * np.exp(1j * (np.pi/2 - self.alpha))
-        self.t_BB = -self.t_AA
+        self.t_BB_mag = t_BB_mag
         self.t_AB_mag = t_AB_mag
-        self.t_AB = self.t_AB_mag * 1j
-        self.t_BA = self.t_AB
+        self.t_BA_mag = t_BA_mag
+        self.phi_AA = phi_AA
+        self.phi_AB = phi_AB
+        self.phi_BA = phi_BA
+        self.phi_BB = phi_BB
+        self.t_AA = self.t_AA_mag * np.exp(1j * self.phi_AA)
+        self.t_AB = self.t_AB_mag * np.exp(1j * self.phi_AB)
+        self.t_BA = self.t_BA_mag * np.exp(1j * self.phi_BA)
+        self.t_BB = self.t_BB_mag * np.exp(1j * self.phi_BB)
         self.a1 = self.a * np.array([1, 0])
         self.b1 = self.a * np.array([0, -1])
         self.N_sublattice = 2
@@ -215,9 +222,11 @@ class Ladder(Lattice):
         upper (lower) leg. 
         If average=True, calculates the average polarisation per unit cell.
         """
-        sz = np.array([[1, 0],
-                       [0, -1]])
-        Py = np.kron(np.eye(self.L), sz)
+        y0 = np.mean([site.r[1] for site in self.sites])
+        N = len(self.sites)
+        Py = np.zeros((N, N))
+        for i, site in enumerate(self.sites):
+            Py[i, i] = site.r[1] - y0
         if average:
             Py /= self.L
         return Py
@@ -280,12 +289,75 @@ class Ladder(Lattice):
         save_dict = {
             't':                self.t,
             't_AA':             self.t_AA,
+            't_AB':             self.t_AB,
+            't_BA':             self.t_BA,
+            't_BB':             self.t_BB,
+            't_AA_mag':         self.t_AA_mag,
+            't_AB_mag':         self.t_AB_mag,
+            't_BA_mag':         self.t_BA_mag,
+            't_BB_mag':         self.t_BB_mag,
+            't_AA_mag':         self.t_AA_mag,
+            'phi_AA':           self.phi_AA,
+            'phi_AB':           self.phi_AB,
+            'phi_BA':           self.phi_BA,
+            'phi_BB':           self.phi_BB,
+            'L':                self.L,
+            'a':                self.a,
+            'V_name':           self.V_name,
+        }
+        for p in ['V', 'beta', 'phi_1', 'phi_2', 'theta']:
+            if p in self.V_args.keys():
+                save_dict[p] = self.V_args[p]
+        return save_dict
+
+
+class Asym_Ladder(Ladder):
+    def __init__(self, L, t_AA_mag=1, t=1, alpha=np.pi/10, t_AB_mag=0.2, a=1, 
+                 V=None, V_args={}, show_progress=True, **kwargs):
+        super().__init__(L=L, t=t, a=a, 
+                         t_AA_mag=t_AA_mag, phi_AA=np.pi/2-alpha, t_BB_mag=t_AA_mag,
+                         phi_BB=-np.pi/2-alpha, t_AB_mag=t_AB_mag, t_BA_mag=t_AB_mag,
+                         phi_AB=np.pi/2, phi_BA=np.pi/2,
+                         V=V, V_args=V_args,
+                         show_progress=show_progress, **kwargs)
+        self.save_dict = self.build_save_dict()
+
+    def build_save_dict(self):
+        save_dict = {
+            't':                self.t,
+            't_AA':             self.t_AA,
             't_BB':             self.t_BB,
             't_AA_mag':         self.t_AA_mag,
             't_AB':             self.t_AB,
             't_BA':             self.t_BA,
             't_AB_mag':         self.t_AB_mag,
             'alpha':            self.alpha,
+            'alpha_red':        self.alpha/np.pi,
+            'L':                self.L,
+            'a':                self.a,
+            'V_name':           self.V_name,
+        }
+        for p in ['V', 'beta', 'phi_1', 'phi_2', 'theta']:
+            if p in self.V_args.keys():
+                save_dict[p] = self.V_args[p]
+        return save_dict
+
+
+class Plain_Ladder(Ladder):
+    def __init__(self, L, t2_mag=1, t=1, phi=np.pi/2,  a=1, 
+                     V=None, V_args={}, show_progress=True, **kwargs):
+        super().__init__(L=L, t=t, t_AA_mag=t2_mag, t_BB_mag=t2_mag, 
+                         phi_AA=phi, phi_BB=-phi, a=a, V=V, V_args=V_args, 
+                         show_progress=show_progress)
+
+        self.save_dict = self.build_save_dict()
+    
+    def build_save_dict(self):
+        save_dict = {
+            't':                self.t,
+            't2_mag':           self.t2_mag,
+            'phi':              self.phi,
+            'phi_red':          self.phi/np.pi,
             'L':                self.L,
             'a':                self.a,
             'V_name':           self.V_name,
@@ -378,6 +450,7 @@ class Haldane(Lattice):
             't2':               self.t2,
             't2_mag':           np.abs(self.t2),
             'phi':              np.angle(self.t2),
+            'phi_red':          np.angle(self.t2) / np.pi,
             'm':                self.m,
             'L':                self.L,
             'Lx':               self.Lx,
@@ -474,3 +547,43 @@ class Site:
 
     def near_edge(self, N_edge, L):
         return np.logical_or(np.any(self.uc_idx<=N_edge-1), np.any(self.uc_idx>=L-N_edge))
+
+
+class Haldane_Ladder(Haldane):
+    def __init__(self, L, **kwargs):
+        super().__init__(Lx=L, Ly=2, **kwargs)
+
+    def calc_Py(self, average=True):
+        y0 = np.mean([site.r[1] for site in self.sites])
+        N = len(self.sites)
+        Py = np.zeros((N, N))
+        for i, site in enumerate(self.sites):
+            Py[i,i] = site.r[1] - y0
+        if average:
+            Py /= self.Lx
+        return Py
+
+    def calc_Jx_tot(self, average=True):
+        """
+        Calculate and return the operator giving total current in the +x direction,
+        summed and optionally averaged over all unit cells in the system.
+        Takes into account all hoppings with components in the x-direction, but not 
+        intra-cell t hopping which is purely in the y direction.
+        """
+        N = len(self.sites)
+        Jx = np.zeros((N, N), dtype=np.complex128)
+        for i in range(self.L-1):
+            for j in range(2):
+                # AA hopping
+                Jx[4*(i+1)+2*j, 4*i+2*j] = -1j * self.t2
+                # AB hopping
+                Jx[4*i+2*j+1, 4*i+2*j] = -1j * self.t
+                # BA hopping
+                Jx[4*(i+1)+2*j, 4*i+2*j+1] = -1j * self.t
+                # BB hopping
+                Jx[4*(i+1)+2*j+1, 4*i+2*j+1] = -1j * np.conj(self.t2)
+        # Add Hermitian conjugate terms
+        Jx += Jx.conj().T
+        if average:
+            Jx /= self.Lx
+        return Jx
