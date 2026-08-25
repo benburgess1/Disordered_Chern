@@ -34,6 +34,21 @@ def V_hex_rot(x, y, beta=1, V=1, a=1, phi_1=0, phi_2=0, theta=0., **kwargs):
     G2 = R @ G2
     return V * (np.cos((G1[0]+G2[0])*x + (G1[1]+G2[1])*y + phi_1) + np.cos((G1[0]-G2[0])*x + (G1[1]-G2[1])*y + phi_2))
 
+def origin_to_phases(x0, y0, beta=1, a=1):
+    G = beta * 4 * np.pi / (np.sqrt(3) * a)
+    G1 = G * np.array([np.sqrt(3)/2, -1/2])
+    G2 = G * np.array([0, 1])
+    r0 = np.array([x0, y0])
+    phi_1 = -beta * (G1+G2) @ r0
+    phi_2 = -beta * (G1-G2) @ r0
+    return phi_1, phi_2
+
+
+def lattice_origin_to_phases(i0, j0, beta=1):
+    phi_1 = -beta * 2*np.pi * (i0 + j0)
+    phi_2 = -beta * 2*np.pi * (i0 - j0)
+    return phi_1, phi_2
+
 def V_random(x, y, V=1, rng=np.random.default_rng(0), **kwargs):
     return V * (2 * rng.random() - 1)
 
