@@ -209,17 +209,21 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
     plt.show()
 
 
-def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
-                      calc_new=False, calc_avg=False, N_max=5, **kwargs):
-    data = np.load(filename)
-    L = data['L']
-    system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'])
-    if calc_new:
-        evects = data['evects']
-        E_vals = data['E_vals']
-        chern = Calculations.calc_chern_marker(evects, system, E_vals=E_vals, **kwargs)
-    else:
-        chern = data['chern_marker']
+def plot_chern_marker(filename=None, chern=None, system=None, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
+                      calc_new=False, calc_avg=False, N_max=5, title_str=None, **kwargs):
+    if filename is not None:
+        data = np.load(filename)
+        L = data['L']
+        if system is None:
+            system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'])
+        if calc_new:
+            evects = data['evects']
+            E_vals = data['E_vals']
+            chern = Calculations.calc_chern_marker(evects, system, E_vals=E_vals, **kwargs)
+        else:
+            chern = data['chern_marker']
+    elif chern is None:
+        raise ValueError('Chern marker must be supplied if filename is not supplied')
     fig, ax = plt.subplots()
     fig.set_size_inches(9, 5)
     system.plot_lattice(ax=ax, ms=0, color='k', zorder=3, **kwargs)
@@ -233,7 +237,8 @@ def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=4)
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(r'$C(\mathbf{r})$', rotation=0)
-    title_str = 'Chern Marker'
+    if title_str is None:
+        title_str = 'Chern Marker'
     if calc_avg:
         c_avg, r_centre = Calculations.calc_avg_chern(chern, system, N_max=N_max, return_centre=True)
         boundary = N_max * np.array([system.a1+system.a2, -system.a1+system.a2, -system.a1-system.a2, system.a1-system.a2, system.a1+system.a2]) + r_centre
@@ -242,14 +247,15 @@ def plot_chern_marker(filename, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax
     if calc_new:
         if 'N_occ' in kwargs:
             title_str += r', $N_{occ}=$' + f'{kwargs.get('N_occ'):.3g}'
-        elif 'E_max' in kwargs:
-            title_str += r', $E_{max}=$' + f'{kwargs.get('E_max'):.3g}'
-    else:
+        elif 'E_F' in kwargs:
+            title_str += r', $E_{F}=$' + f'{kwargs.get('E_F'):.3g}'
+    elif filename is not None:
         if 'N_occ' in data.files:
             title_str += r', $N_{occ}=$' + f'{data['N_occ']:.3g}'
         elif 'E_max' in data.files:
-            title_str += r', $E_{max}=$' + f'{data['E_max']:.3g}'
-    title_str = make_title_str(data, base_str=title_str, params=title_params)
+            title_str += r', $E_{F}=$' + f'{data['E_F']:.3g}'
+    if filename is not None:
+        title_str = make_title_str(data, base_str=title_str, params=title_params)
     ax.set_title(title_str)
     plt.show()
 
