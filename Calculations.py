@@ -32,7 +32,7 @@ def calc_butterfly(phi_vals, L, calc_ipr=True, save=True, save_filename='Data/Bu
             np.savez(save_filename, phi_vals=phi_vals, E_vals=E_vals, L=L, **kwargs)
 
 
-def calc_chern_marker(evects, system, N_occ=None, E_max=None, E_vals=None, **kwargs):
+def calc_chern_marker(evects, system, N_occ=None, E_F=None, E_vals=None, **kwargs):
     """
     Compute the Bianco-Resta real-space Chern marker for each site.
 
@@ -54,10 +54,10 @@ def calc_chern_marker(evects, system, N_occ=None, E_max=None, E_vals=None, **kwa
     chern_marker : ndarray, shape (N,)
         Real-space Chern marker C(r) at each site, indexed by site_idx.
     """
-    if E_max is not None:
+    if E_F is not None:
         if E_vals is None:
-            raise ValueError("E_vals must be supplied when E is specified.")
-        occ = evects[:, E_vals <= E_max]
+            raise ValueError("E_vals must be supplied when E_F is specified.")
+        occ = evects[:, E_vals <= E_F]
     elif N_occ is not None:
         occ = evects[:, :N_occ]
     else:
@@ -147,7 +147,7 @@ def calc_chern_vs_E(system, E_F_vals=None, N_E_F=100, N_max=3, save=True, save_f
         ipr_vals = np.sum(np.abs(evects)**4, axis=0)
     C_vals = np.zeros_like(E_F_vals)
     for i, E in enumerate(tqdm(E_F_vals, desc='Calculating over Fermi energies')):
-        chern_marker = calc_chern_marker(evects, system, E_max=E, E_vals=evals)
+        chern_marker = calc_chern_marker(evects, system, E_F=E, E_vals=evals)
         C_vals[i] = calc_avg_chern(chern_marker, system, N_max=N_max)
     if save:
         save_dict = system.save_dict
