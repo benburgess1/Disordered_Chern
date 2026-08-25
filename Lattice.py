@@ -73,7 +73,7 @@ class Lattice(ABC):
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
                      suppress_ticks=True, vmax=None, zorder=3, lw=1, plot_next_neighbours=False, 
-                     aspect='equal', pad=0.5,
+                     aspect='equal', pad=0.5, title_str='',
                      **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
@@ -116,6 +116,7 @@ class Lattice(ABC):
                     ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=zorder)
                 cbar = fig.colorbar(sm, ax=ax)
                 cbar.set_label(r'$V(\mathbf{r})$', rotation=0)
+        ax.set_title(title_str)
         if plot_fig:
             plt.show()
         return ax
@@ -148,7 +149,7 @@ class Ladder(Lattice):
         self.N_sublattice = 2
         self.build_lattice()
         self.set_potentials()
-        self.save_dict = self.build_save_dict()
+        # self.save_dict = self.build_save_dict()
 
     def build_lattice(self):
         with _progress(total=self.L, desc='Building lattice', show=self.show_progress) as pbar:
@@ -177,7 +178,7 @@ class Ladder(Lattice):
                 for neighbour in site.neighbours:
                     # Difference in unit cell index
                     d = int(neighbour.uc_idx[0] - site.uc_idx[0])
-                    # Intra-cell hopping
+                    # Intra-cell hopping:
                     if d == 0:
                         H[neighbour.site_idx, site.site_idx] = self.t
                     # Inter-cell hopping:
@@ -189,10 +190,10 @@ class Ladder(Lattice):
                     elif d == -1:
                         if site.sublattice == 'A' and neighbour.sublattice == 'A':
                             H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AA)
-                        elif site.sublattice == 'A' and neighbour.sublattice == 'B':
-                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AB)
-                        elif site.sublattice == 'B' and neighbour.sublattice == 'A':
-                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BA)
+                        # elif site.sublattice == 'A' and neighbour.sublattice == 'B':
+                        #     H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AB)
+                        # elif site.sublattice == 'B' and neighbour.sublattice == 'A':
+                        #     H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BA)
                         elif site.sublattice == 'B' and neighbour.sublattice == 'B':
                             H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BB)
                 for neighbour in site.next_neighbours:
@@ -204,9 +205,9 @@ class Ladder(Lattice):
                             H[neighbour.site_idx, site.site_idx] = self.t_BA
                     elif d == -1:
                         if site.sublattice == 'A' and neighbour.sublattice == 'B':
-                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AB)
-                        elif site.sublattice == 'B' and neighbour.sublattice == 'A':
                             H[neighbour.site_idx, site.site_idx] = np.conj(self.t_BA)
+                        elif site.sublattice == 'B' and neighbour.sublattice == 'A':
+                            H[neighbour.site_idx, site.site_idx] = np.conj(self.t_AB)
                 # On-site potential
                 if self.V is not None:
                     H[site.site_idx, site.site_idx] += site.V
@@ -320,6 +321,7 @@ class Asym_Ladder(Ladder):
                          phi_AB=np.pi/2, phi_BA=np.pi/2,
                          V=V, V_args=V_args,
                          show_progress=show_progress, **kwargs)
+        self.alpha = alpha
         self.save_dict = self.build_save_dict()
 
     def build_save_dict(self):
@@ -344,12 +346,11 @@ class Asym_Ladder(Ladder):
 
 
 class Plain_Ladder(Ladder):
-    def __init__(self, L, t2_mag=1, t=1, phi=np.pi/2,  a=1, 
-                     V=None, V_args={}, show_progress=True, **kwargs):
+    def __init__(self, L, t2_mag=1, t=1, phi=np.pi/2, **kwargs):
         super().__init__(L=L, t=t, t_AA_mag=t2_mag, t_BB_mag=t2_mag, 
-                         phi_AA=phi, phi_BB=-phi, a=a, V=V, V_args=V_args, 
-                         show_progress=show_progress)
-
+                         phi_AA=phi, phi_BB=-phi, **kwargs)
+        self.t2_mag = t2_mag
+        self.phi = phi
         self.save_dict = self.build_save_dict()
     
     def build_save_dict(self):
@@ -463,6 +464,41 @@ class Haldane(Lattice):
             if p in self.V_args.keys():
                 save_dict[p] = self.V_args[p]
         return save_dict
+
+    def calc_Py(self, average=True):
+        y0 = np.mean([site.r[1] for site in self.sites])
+        N = len(self.sites)
+        Py = np.zeros((N, N))
+        for i, site in enumerate(self.sites):
+            Py[i,i] = site.r[1] - y0
+        if average:
+            Py /= self.Lx
+        return Py
+
+    def calc_Jx_tot(self, average=True):
+        """
+        Calculate and return the operator giving total current in the +x direction,
+        summed and optionally averaged over all unit cells in the system.
+        Takes into account all hoppings with components in the x-direction, but not 
+        intra-cell t hopping which is purely in the y direction.
+        """
+        N = len(self.sites)
+        Jx = np.zeros((N, N), dtype=np.complex128)
+        for i in range(self.L-1):
+            for j in range(self.Ly):
+                # AA hopping
+                Jx[2*self.Ly*(i+1)+2*j, 2*self.Ly*i+2*j] = -1j * self.t2
+                # AB hopping
+                Jx[2*self.Ly*i+2*j+1, 2*self.Ly*i+2*j] = -1j * self.t
+                # BA hopping
+                Jx[2*self.Ly*(i+1)+2*j, 2*self.Ly*i+2*j+1] = -1j * self.t
+                # BB hopping
+                Jx[2*self.Ly*(i+1)+2*j+1, 2*self.Ly*i+2*j+1] = -1j * np.conj(self.t2)
+        # Add Hermitian conjugate terms
+        Jx += Jx.conj().T
+        if average:
+            Jx /= self.Lx
+        return Jx
 
 
 class Hofstadter(Lattice):
