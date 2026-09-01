@@ -57,12 +57,14 @@ class Lattice(ABC):
                 else:
                     site.V = self.V(*site.r, **self.V_args)
 
-    def remove_site(self, site_idx):
-        site = self.sites[site_idx]
+    def remove_site(self, site):
+        # site = self.sites[site_idx]
         for neighbour in site.neighbours:
             neighbour.neighbours.remove(site)
         for next_neighbour in site.next_neighbours:
             next_neighbour.next_neighbours.remove(site)
+        for third_neighbour in site.third_neighbours:
+            third_neighbour.third_neighbours.remove(site)
         self.sites.remove(site)
         self.reindex_sites()
 
@@ -72,8 +74,10 @@ class Lattice(ABC):
 
     def plot_lattice(self, ax=None, color='k', ms=5, plot_V=False, p=0.5, Nx=100,
                      plot_fig=False, plot_V_onsite=False, cmap_name='viridis',
-                     suppress_ticks=True, vmax=None, zorder=3, lw=1, plot_next_neighbours=False, 
-                     aspect='equal', pad=0.5, title_str='',
+                     suppress_ticks=True, vmax=None, zorder=3, lw=1, 
+                     plot_next_neighbours=False, ls_nn='-',
+                     plot_third_neighbours=False, ls_tn='-',
+                     aspect='equal', pad=0.5, title_str='', 
                      **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
@@ -92,7 +96,11 @@ class Lattice(ABC):
             if plot_next_neighbours:
                 for neighbour in site.next_neighbours:
                     ax.plot([site.r[0], neighbour.r[0]], [site.r[1], neighbour.r[1]],
-                            marker=None, color=color, ms=ms, ls=':', lw=lw, zorder=zorder)
+                            marker='o', color=color, ms=ms, ls=ls_nn, lw=lw, zorder=zorder)
+            if plot_third_neighbours:
+                for neighbour in site.third_neighbours:
+                    ax.plot([site.r[0], neighbour.r[0]], [site.r[1], neighbour.r[1]],
+                            marker='o', color=color, ms=ms, ls=ls_tn, lw=lw, zorder=zorder)
         if (plot_V or plot_V_onsite) and self.V is not None:
             r_all = np.array([site.r for site in self.sites])
             x = np.linspace(r_all[:, 0].min() - p, r_all[:, 0].max() + p, Nx)
@@ -376,11 +384,19 @@ class Haldane(Lattice):
                          show_progress=show_progress, **kwargs)
         self.t2 = t2
         self.m = m
+        # Lattice vectors
         self.a1 = self.a * np.array([1, 0])
         self.a2 = self.a * np.array([0.5, 0.5 * np.sqrt(3)])
+        # Nearest-neighbour vectors, directed from A to B sites
         self.b = self.a * np.sqrt(3) / 3
         self.b1 = self.b * np.array([0.5 * np.sqrt(3), 0.5])
-        self.b2 = self.b * np.array([0, 1])
+        self.b2 = self.b * np.array([0, -1])
+        self.b3 = self.b * np.array([-0.5 * np.sqrt(3), 0.5])
+        # Third-neighbour vectors (along diagonals of hexagons), directed from A to B sites
+        self.d1 = self.a1 + self.b2
+        self.d2 = self.a2 + self.b3
+        self.d3 = -self.a1 + self.b2
+        self.build_save_dict
         self.N_sublattice = 2
         self.exclude_endsites = exclude_endsites
         self.build_lattice()
@@ -410,6 +426,13 @@ class Haldane(Lattice):
                         if j < self.Ly-1:
                             site_A.add_next_neighbour(self.sites[(i-1)*2*self.Ly+2*(j+1)])
                             site_B.add_next_neighbour(self.sites[(i-1)*2*self.Ly+2*(j+1)+1])
+                    # Add third neighbours (along diagonals of hexagons). Not needed for Haldane model, but useful for Ladder Network later
+                    if i > 0:
+                        if j < self.Ly-1:
+                            site_A.add_third_neighbour(self.sites[(i-1)*2*self.Ly+2*(j+1)+1])
+                            site_B.add_third_neighbour(self.sites[(i-1)*2*self.Ly+2*(j+1)])
+                        if j > 0:
+                            site_A.add_third_neighbour(self.sites[(i-1)*2*self.Ly+2*(j-1)+1])
                     self.sites.append(site_A)
                     self.sites.append(site_B)
                     if pbar: pbar.update(1)
@@ -429,10 +452,10 @@ class Haldane(Lattice):
                 for next_neighbour in site.next_neighbours:
                     dr = next_neighbour.r - site.r
                     if site.sublattice == 'A':
-                        if np.all(np.isclose(dr, -self.a1)) or np.all(np.isclose(dr, self.a2)) or np.all(np.isclose(dr, self.a1-self.a2)):
-                            H[next_neighbour.site_idx, site.site_idx] = np.conj(self.t2)
-                        else:
+                        if np.all(np.isclose(dr, self.a1)) or np.all(np.isclose(dr, -self.a2)) or np.all(np.isclose(dr, self.a2-self.a1)):
                             H[next_neighbour.site_idx, site.site_idx] = self.t2
+                        else:
+                            H[next_neighbour.site_idx, site.site_idx] = np.conj(self.t2)
                     else:
                         if np.all(np.isclose(dr, -self.a1)) or np.all(np.isclose(dr, self.a2)) or np.all(np.isclose(dr, self.a1-self.a2)):
                             H[next_neighbour.site_idx, site.site_idx] = self.t2
@@ -569,6 +592,7 @@ class Site:
         self.site_idx = site_idx
         self.neighbours = []
         self.next_neighbours = []
+        self.third_neighbours = []
         self.V = 0
 
     def add_neighbour(self, other):
@@ -580,6 +604,11 @@ class Site:
         if self not in other.next_neighbours:
             other.next_neighbours.append(self)
             self.next_neighbours.append(other)
+
+    def add_third_neighbour(self, other):
+        if self not in other.third_neighbours:
+            other.third_neighbours.append(self)
+            self.third_neighbours.append(other)
 
     def near_edge(self, N_edge, L):
         return np.logical_or(np.any(self.uc_idx<=N_edge-1), np.any(self.uc_idx>=L-N_edge))
@@ -623,3 +652,139 @@ class Haldane_Ladder(Haldane):
         if average:
             Jx /= self.Lx
         return Jx
+
+
+class Ladder_Network(Haldane):
+    def __init__(self, i0=[], j0=[], dt_AA=0., dt_BB=0., t_AB=0., t_BA=0.,
+                 calc_effective=True, V1=1, V2=1, **kwargs):
+        # Initialise Haldane model with full Honeycomb lattice
+        super().__init__(**kwargs)
+        self.i0 = i0
+        self.j0 = j0
+        self.V1 = V1
+        self.V2 = V2
+        if calc_effective:
+            self.dt_AA, self.dt_BB, self.t_AB, self.t_BA, self.dt_AA_junction, self.dt_BB_junction = self.calc_effective_hoppings(self.V1, self.V2)
+        else:
+            self.dt_AA = dt_AA
+            self.dt_BB = dt_BB
+            self.t_AB = t_AB
+            self.t_BA = t_BA
+        # Remove sites not selected as part of the network
+        self.trim_lattice()
+        # self.set_potentials()
+        self.save_dict.update({
+            'i0':           self.i0,
+            'j0':           self.j0, 
+            'dt_AA':        self.dt_AA,
+            'dt_AA_mag':    np.abs(self.dt_AA),
+            'dt_BB':        self.dt_BB,
+            'dt_BB_mag':    np.abs(self.dt_BB),
+            't_AB':         self.t_AB,
+            't_AB_mag':     np.abs(self.t_AB),
+            't_BA':         self.t_BA,
+            't_BA_mag':     np.abs(self.t_BA),
+            'V1':           self.V1,
+            'V2':           self.V2,
+        })
+
+
+    def trim_lattice(self):
+        # Remove sites not on chosen strips
+        for site in self.sites.copy():
+            if site.sublattice == 'A':
+                if site.uc_idx[0] not in self.i0 and site.uc_idx[1] not in self.j0:
+                    self.remove_site(site)
+            elif site.sublattice == 'B':
+                if site.uc_idx[0]+1 not in self.i0 and site.uc_idx[1]+1 not in self.j0:
+                    self.remove_site(site)
+
+    def calc_effective_hoppings(self, V1, V2):
+        dt_AA = -self.t**2/V1 - np.conj(self.t2)**2/(-V1) - np.conj(self.t2)**2/V2
+        dt_BB = -self.t**2/(-V1) - self.t2**2/V1 - self.t2**2/V2
+        t_AB = -self.t*self.t2/V1 - np.conj(self.t2)*self.t/(-V1)
+        t_BA = -self.t2*self.t/V1 - self.t*np.conj(self.t2)/(-V1)
+        dt_AA_junction = -np.conj(self.t2)**2/V2
+        dt_BB_junction = -self.t2**2/V2
+        return dt_AA, dt_BB, t_AB, t_BA, dt_AA_junction, dt_BB_junction
+
+    def in_junction(self, site):
+        i, j = site.uc_idx
+        if site.sublattice == 'A':
+            return (i not in self.i0 or j not in self.j0) and (i+1 not in self.i0 or j not in self.j0) and (i not in self.i0 or j+1 not in self.j0)
+        else:
+            return (i+1 not in self.i0 or j+1 not in self.j0) and (i+1 not in self.i0 or j not in self.j0) and (i not in self.i0 or j+1 not in self.j0)
+
+
+    def calc_H(self):
+        N = len(self.sites)
+        H = np.zeros((N, N), dtype=np.complex128)
+        with _progress(total=N, desc='Building Hamiltonian', show=self.show_progress) as pbar:
+            for site in self.sites:
+                # Near neighbour hopping
+                for neighbour in site.neighbours:
+                    H[neighbour.site_idx, site.site_idx] += self.t
+                # Next near neighbour hopping
+                for next_neighbour in site.next_neighbours:
+                    dr = next_neighbour.r - site.r
+                    if site.sublattice == 'A':
+                        if np.all(np.isclose(dr, self.a1)) or np.all(np.isclose(dr, -self.a2)) or np.all(np.isclose(dr, self.a2-self.a1)):
+                            H[next_neighbour.site_idx, site.site_idx] += self.t2
+                            # Exclude junction sites from virtual hopping processes
+                            if self.in_junction(site) and self.in_junction(next_neighbour):
+                                H[next_neighbour.site_idx, site.site_idx] += self.dt_AA_junction
+                            else:
+                                H[next_neighbour.site_idx, site.site_idx] += self.dt_AA
+                        else:
+                            H[next_neighbour.site_idx, site.site_idx] += np.conj(self.t2)
+                            # Exclude junction sites from virtual hopping processes
+                            if self.in_junction(site) and self.in_junction(next_neighbour):
+                                H[next_neighbour.site_idx, site.site_idx] += np.conj(self.dt_AA_junction)
+                            else: 
+                                H[next_neighbour.site_idx, site.site_idx] += np.conj(self.dt_AA)
+                    else:
+                        if np.all(np.isclose(dr, -self.a1)) or np.all(np.isclose(dr, self.a2)) or np.all(np.isclose(dr, self.a1-self.a2)):
+                            H[next_neighbour.site_idx, site.site_idx] += self.t2
+                            # Exclude junction sites from virtual hopping processes
+                            if self.in_junction(site) and self.in_junction(next_neighbour):
+                                H[next_neighbour.site_idx, site.site_idx] += np.conj(self.dt_BB_junction)
+                            else: 
+                                H[next_neighbour.site_idx, site.site_idx] += np.conj(self.dt_BB)
+                        else:
+                            H[next_neighbour.site_idx, site.site_idx] = np.conj(self.t2)
+                            if self.in_junction(site) and self.in_junction(next_neighbour):
+                                H[next_neighbour.site_idx, site.site_idx] += self.dt_BB_junction
+                            else: 
+                                H[next_neighbour.site_idx, site.site_idx] += self.dt_BB
+                for tn in site.third_neighbours:
+                    dr = tn.r - site.r
+                    if site.sublattice == 'A':
+                        if np.all(np.isclose(dr, self.d1)):
+                            if not (self.in_junction(site) and self.in_junction(tn)):
+                                H[tn.site_idx, site.site_idx] += self.t_AB
+                        elif np.all(np.isclose(dr, self.d2)):
+                            if not (self.in_junction(site) and self.in_junction(tn)):
+                                H[tn.site_idx, site.site_idx] += np.conj(self.t_BA)
+                        elif np.all(np.isclose(dr, self.d3)):       # Here, have d3 vectors which connect sites on both i-direction and j-direction WPLs, so need to handle the two cases separately
+                            if site.uc_idx[0] not in self.i0:
+                                H[tn.site_idx, site.site_idx] += np.conj(self.t_BA)
+                            elif site.uc_idx[1] not in self.j0:
+                                H[tn.site_idx, site.site_idx] += self.t_AB
+                    else:
+                        if np.all(np.isclose(dr, -self.d3)):        # Handle i- and j-WPLs separately as above
+                            if site.uc_idx[0]+1 not in self.i0:
+                                H[tn.site_idx, site.site_idx] += self.t_BA
+                            elif site.uc_idx[1]+1 not in self.j0:
+                                H[tn.site_idx, site.site_idx] += np.conj(self.t_AB)
+                        elif not (self.in_junction(site) and self.in_junction(tn)):
+                            if site.uc_idx[1] not in self.j0:
+                                H[tn.site_idx, site.site_idx] += self.t_BA
+                        elif not (self.in_junction(site) and self.in_junction(tn)):
+                            if site.uc_idx[0] not in self.i0:
+                                H[tn.site_idx, site.site_idx] += np.conj(self.t_AB)
+                # On-site potential
+                H[site.site_idx, site.site_idx] = self.m if site.sublattice == 'A' else -self.m
+                if self.V is not None:
+                    H[site.site_idx, site.site_idx] += site.V
+                if pbar: pbar.update(1)
+        return H
