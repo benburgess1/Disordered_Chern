@@ -295,13 +295,13 @@ def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
     
 def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_param='C_mean',
                        cmap='RdBu_r', x_label=None, y_label=None, z_label=None,
-                       title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5):
+                       title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5, transpose=False):
     data = np.load(filename)
     x_data = data[x_param]
     y_data = data[y_param]
     z_data = data[z_param]
 
-    if z_data.shape == (y_data.size, x_data.size):
+    if transpose:
         z_data = z_data.T
     elif z_data.shape != (x_data.size, y_data.size):
         raise ValueError(f"z_data shape {z_data.shape} inconsistent with x ({x_data.size},) and y ({y_data.size},)")
