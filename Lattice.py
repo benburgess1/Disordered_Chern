@@ -82,6 +82,8 @@ class Lattice(ABC):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
+        else:
+            fig = ax.get_figure()
         ax.set_aspect(aspect)
         positions = np.array([site.r for site in self.sites])
         ax.set_xlim(np.min(positions[:,0] - pad), np.max(positions[:,0] + pad))
@@ -124,10 +126,15 @@ class Lattice(ABC):
                     ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=zorder)
                 cbar = fig.colorbar(sm, ax=ax)
                 cbar.set_label(r'$V(\mathbf{r})$', rotation=0)
+        else:
+            cbar = None
         ax.set_title(title_str)
         if plot_fig:
             plt.show()
-        return ax
+        if cbar:
+            return ax, cbar
+        else:
+            return ax
 
     def get_bulk_mask(self, N_edge=1):
         return np.array([~site.near_edge(N_edge, self.L) for site in self.sites], dtype=bool)

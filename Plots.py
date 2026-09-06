@@ -143,7 +143,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
 
 
 def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Lattice.Haldane, L=30, cmap=None, ms=5, log=False, max_orders=None,
-                    title_str='', plot_quantity='abs', fix_gauge=True, **kwargs):
+                    title_str='', plot_quantity='abs', fix_gauge=True, ax=None, zorder=4, plot_fig=True, **kwargs):
     if psi is None:
         if filename is None:
             raise ValueError('Either state psi or filename and index must be specified')
@@ -189,13 +189,16 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
 
     if system is None:
         system = model(L, show_progress=False, exclude_endsites=data['exclude_endsites'] if filename is not None else False)
-    fig, ax = plt.subplots()
-    fig.set_size_inches(9, 5)
+    if ax is None:
+        fig, ax = plt.subplots()
+        fig.set_size_inches(9, 5)
+    else:
+        fig = ax.get_figure()
     system.plot_lattice(ax=ax, ms=0, color='k', **kwargs)
 
     for site in system.sites:
         c = plt.get_cmap(cmap)(norm(z[site.site_idx]))
-        ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c)
+        ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=zorder)
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label(z_label, rotation=0)
     if filename is not None:
@@ -206,11 +209,14 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
         if 'polarization' in data.files:
             title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
     ax.set_title(title_str)
-    plt.show()
+    if plot_fig:
+        plt.show()
+    else:
+        return ax, cbar
 
 
 def plot_chern_marker(filename=None, chern=None, system=None, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
-                      calc_new=False, calc_avg=False, N_max=5, title_str=None, **kwargs):
+                      calc_new=False, calc_avg=False, N_max=5, title_str=None, ax=None, plot_fig=True, **kwargs):
     if filename is not None:
         data = np.load(filename)
         L = data['L']
@@ -224,8 +230,11 @@ def plot_chern_marker(filename=None, chern=None, system=None, model=Lattice.Hofs
             chern = data['chern_marker']
     elif chern is None:
         raise ValueError('Chern marker must be supplied if filename is not supplied')
-    fig, ax = plt.subplots()
-    fig.set_size_inches(9, 5)
+    if ax is None:
+        fig, ax = plt.subplots()
+        fig.set_size_inches(9, 5)
+    else:
+        fig = ax.get_figure()
     system.plot_lattice(ax=ax, ms=0, color='k', zorder=3, **kwargs)
     if vmax is None:
         vmax = np.max(np.abs(chern))
@@ -257,8 +266,13 @@ def plot_chern_marker(filename=None, chern=None, system=None, model=Lattice.Hofs
     if filename is not None:
         title_str = make_title_str(data, base_str=title_str, params=title_params)
     ax.set_title(title_str)
-    plt.show()
-
+    if plot_fig:
+        plt.show()
+    if calc_avg:
+        return ax, cbar, c_avg
+    else:
+        return ax, cbar
+    
 def plot_C_avg(filename, ax=None, plot_std=False, color='b', ms=4, title_params={}, ylim=None, plot_fig=True,
                label=None):
     data = np.load(filename)
@@ -295,7 +309,8 @@ def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
     
 def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_param='C_mean',
                        cmap='RdBu_r', x_label=None, y_label=None, z_label=None,
-                       title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5, transpose=False):
+                       title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5, transpose=False,
+                       ax=None, plot_fig=True):
     data = np.load(filename)
     x_data = data[x_param]
     y_data = data[y_param]
@@ -304,7 +319,12 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
     if transpose:
         z_data = z_data.T
     elif z_data.shape != (x_data.size, y_data.size):
-        raise ValueError(f"z_data shape {z_data.shape} inconsistent with x ({x_data.size},) and y ({y_data.size},)")
+        if z_data.shape == (y_data.size, x_data.size):
+            print(f"Warning: z_data shape {z_data.shape} inconsistent with x ({x_data.size},) and y ({y_data.size},)")
+            print('Transposing z_data')
+            z_data = z_data.T
+        else:
+            raise ValueError(f"z_data shape {z_data.shape} inconsistent with x ({x_data.size},) and y ({y_data.size},)")
 
     dx = (x_data[1] - x_data[0]) / 2
     dy = (y_data[1] - y_data[0]) / 2
@@ -314,7 +334,10 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
         vmax = np.max(np.abs(z_data))
     norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
     im = ax.imshow(z_data.T, origin='lower', extent=extent, aspect='auto',
                    cmap=cmap, norm=norm)
     
@@ -334,7 +357,9 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
 
     title_str = make_title_str(data, base_str='Phase Diagram', params=title_params)
     ax.set_title(title_str)
-    plt.show()
+    if plot_fig:
+        plt.show()
+    return ax, cbar
 
 def plot_chern_vs_param(filenames, x_param='E_F_vals', x_label=None, filling_fraction=False,
                      legend_param='V', legend_title=None,

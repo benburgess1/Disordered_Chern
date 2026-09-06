@@ -61,7 +61,7 @@ def calc_chern_marker(evects, system, N_occ=None, E_F=None, E_vals=None, **kwarg
     elif N_occ is not None:
         occ = evects[:, :N_occ]
     else:
-        raise ValueError("Either N_bands or E (with E_vals) must be supplied.")
+        raise ValueError("Either N_occ or E (with E_vals) must be supplied.")
     
     sites = system.sites
 
