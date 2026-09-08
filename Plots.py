@@ -143,7 +143,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
 
 
 def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Lattice.Haldane, L=30, cmap=None, ms=5, log=False, max_orders=None,
-                    title_str='', plot_quantity='abs', fix_gauge=True, ax=None, zorder=4, plot_fig=True, **kwargs):
+                    title_str='', plot_quantity='abs', fix_gauge=True, ax=None, zorder=4, plot_fig=True, cax=None, **kwargs):
     if psi is None:
         if filename is None:
             raise ValueError('Either state psi or filename and index must be specified')
@@ -199,7 +199,7 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
     for site in system.sites:
         c = plt.get_cmap(cmap)(norm(z[site.site_idx]))
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=zorder)
-    cbar = fig.colorbar(sm, ax=ax)
+    cbar = fig.colorbar(sm, cax=cax, ax=ax)
     cbar.set_label(z_label, rotation=0)
     if filename is not None:
         E = data['E_vals'][index]

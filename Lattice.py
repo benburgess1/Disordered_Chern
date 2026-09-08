@@ -77,14 +77,15 @@ class Lattice(ABC):
                      suppress_ticks=True, vmax=None, zorder=3, lw=1, 
                      plot_next_neighbours=False, ls_nn='-',
                      plot_third_neighbours=False, ls_tn='-',
-                     aspect='equal', pad=0.5, title_str='', 
+                     pad=0.5, title_str='', equal_aspect=True,
                      **kwargs):
         if ax is None:
             fig, ax = plt.subplots()
             fig.set_size_inches(9, 5)
         else:
             fig = ax.get_figure()
-        ax.set_aspect(aspect)
+        if equal_aspect:
+            ax.set_aspect('equal')
         positions = np.array([site.r for site in self.sites])
         ax.set_xlim(np.min(positions[:,0] - pad), np.max(positions[:,0] + pad))
         ax.set_ylim(np.min(positions[:,1] - pad), np.max(positions[:,1] + pad))
