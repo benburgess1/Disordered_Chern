@@ -18,6 +18,13 @@ def V_hex_wpl(x, y, beta=1, V=1, a=1, phi_1=0, phi_2=0, **kwargs):
     G2 = G * np.array([0, 1])
     return V * (np.cos((G1[0]+G2[0])*x + (G1[1]+G2[1])*y + phi_1) + np.cos((G1[0]-G2[0])*x + (G1[1]-G2[1])*y + phi_2))
 
+def V_wpl_sym(x, y, beta=1, V=1, a=1, phi_1=0, phi_2=0, phi_3=0, **kwargs):
+    G = beta * 4 * np.pi / (np.sqrt(3) * a)
+    G1 = G * np.array([np.sqrt(3)/2, -1/2])
+    G2 = G * np.array([0, 1])
+    G3 = G1 + G2
+    return 2 * V * np.cos(G1[0]*x + G1[1]*y + phi_1) * np.cos(G2[0]*x + G2[1]*y + phi_2) * np.cos(G3[0]*x + G3[1]*y + phi_3) 
+
 def V_hex_sep(x, y, beta=1, V=1, a=1, phi_1=0, phi_2=0, **kwargs):
     G = beta * 4 * np.pi / (np.sqrt(3) * a)
     G1 = G * np.array([np.sqrt(3)/2, -1/2])
@@ -50,7 +57,9 @@ def lattice_origin_to_phases(i0, j0, beta=1):
     return phi_1, phi_2
 
 def V_random(x, y, V=1, rng=np.random.default_rng(0), **kwargs):
-    return V * (2 * rng.random() - 1)
+    # Chooses amplitude uniformly from [-2V, 2V] to match
+    # amplitude variation of quasiperiodic potentials
+    return 2 * V * (2 * rng.random() - 1)
 
 def V_hex_superlattice(x, y, V=1, n_i=5, n_j=5, i0=3, j0=3, a=1, **kwargs):
     # Calculate site position in basis of lattice vectors (a1, a2)

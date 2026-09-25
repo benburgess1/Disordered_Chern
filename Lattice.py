@@ -111,8 +111,12 @@ class Lattice(ABC):
             if plot_V:
                 xx, yy = np.meshgrid(x, y, indexing='ij')
                 V = self.V(xx, yy, **self.V_args)
-                levels = np.linspace(np.min(V), np.max(V), 200)
-                ticks = [np.min(V), 0, np.max(V)]
+                if vmax is None:
+                    levels = np.linspace(np.min(V), np.max(V), 200)
+                    ticks = [np.min(V), 0, np.max(V)]
+                else:
+                    levels = np.linspace(-vmax, vmax, 200)
+                    ticks = [-vmax, 0, vmax]
                 plot = ax.contourf(xx, yy, V, cmap=plt.colormaps[cmap_name], levels=levels, zorder=zorder-1)
                 cbar = fig.colorbar(plot, ticks=ticks)
                 cbar.ax.set_ylabel(r'$V$', rotation=0)

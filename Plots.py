@@ -216,7 +216,7 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
 
 
 def plot_chern_marker(filename=None, chern=None, system=None, model=Lattice.Hofstadter, cmap='bwr', ms=5, vmax=None, title_params={},
-                      calc_new=False, calc_avg=False, N_max=5, title_str=None, ax=None, plot_fig=True, **kwargs):
+                      calc_new=False, calc_avg=False, N_max=5, title_str=None, ax=None, cax=None, plot_fig=True, **kwargs):
     if filename is not None:
         data = np.load(filename)
         L = data['L']
@@ -244,7 +244,7 @@ def plot_chern_marker(filename=None, chern=None, system=None, model=Lattice.Hofs
     for site in system.sites:
         c = plt.get_cmap(cmap)(norm(chern[site.site_idx]))
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=4)
-    cbar = fig.colorbar(sm, ax=ax)
+    cbar = fig.colorbar(sm, cax=cax, ax=ax)
     cbar.set_label(r'$C(\mathbf{r})$', rotation=0)
     if title_str is None:
         title_str = 'Chern Marker'
@@ -310,7 +310,7 @@ def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
 def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_param='C_mean',
                        cmap='RdBu_r', x_label=None, y_label=None, z_label=None,
                        title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5, transpose=False,
-                       ax=None, plot_fig=True):
+                       ax=None, cax=None, plot_fig=True):
     data = np.load(filename)
     x_data = data[x_param]
     y_data = data[y_param]
@@ -349,7 +349,7 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
         ax.legend()
 
 
-    cbar = fig.colorbar(im, ax=ax)
+    cbar = fig.colorbar(im, cax=cax, ax=ax)
     cbar.set_label(z_label if z_label is not None else z_param, rotation=0)
 
     ax.set_xlabel(x_label if x_label is not None else x_param)
