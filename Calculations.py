@@ -129,7 +129,6 @@ def calc_avg_chern(chern_marker, system, N_max, return_centre=False):
 
     # Select bulk sites: both lattice-vector coordinates within [-N_max, N_max]
     in_bulk = np.all(np.abs(coeffs) <= N_max, axis=1)
-
     avg_chern = np.mean(chern_marker[in_bulk]) * system.N_sublattice / uc_area
     if return_centre:
         return avg_chern, r_centre
@@ -609,3 +608,19 @@ def perform_time_evolution(Psi_occ0, t_vals, H, ops, return_psi=False, **kwargs)
         return op_vals, Psi_vals
     else:
         return op_vals
+
+def calc_IPR_vs_L(filenames, N_avg=10, E0=None, dE=0.01, **kwargs):
+    L_vals = []
+    ipr_vals = []
+    for f in filenames:
+        data = np.load(f)
+        L = data['L']
+        L_vals.append(L)
+        if E0 is None:
+            ipr_data = data['ipr_vals'][L**2-N_avg:L**2]
+        else:
+            E = data['E_vals']
+            mask = np.logical_and(E > (E0 - dE), E < (E0 + dE))
+            ipr_data = data['ipr_vals'][mask]
+        ipr_vals.append(np.power(np.prod(ipr_data), 1/ipr_data.size))
+    return np.array(L_vals, dtype=np.float64), np.array(ipr_vals)
