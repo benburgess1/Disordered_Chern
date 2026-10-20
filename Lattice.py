@@ -668,13 +668,16 @@ class Haldane_Ladder(Haldane):
 
 class Ladder_Network(Haldane):
     def __init__(self, i0=[], j0=[], dt_AA=0., dt_BB=0., t_AB=0., t_BA=0.,
-                 calc_effective=True, V1=1, V2=1, **kwargs):
+                 calc_effective=True, V1=1, V2=1, bare_junctions=False, 
+                 full_junctions=False, **kwargs):
         # Initialise Haldane model with full Honeycomb lattice
         super().__init__(**kwargs)
         self.i0 = i0
         self.j0 = j0
         self.V1 = V1
         self.V2 = V2
+        self.bare_junctions = bare_junctions
+        self.full_junctions = full_junctions
         if calc_effective:
             self.dt_AA, self.dt_BB, self.t_AB, self.t_BA, self.dt_AA_junction, self.dt_BB_junction = self.calc_effective_hoppings(self.V1, self.V2)
         else:
@@ -712,12 +715,18 @@ class Ladder_Network(Haldane):
                     self.remove_site(site)
 
     def calc_effective_hoppings(self, V1, V2):
-        dt_AA = -self.t**2/V1 - np.conj(self.t2)**2/(-V1) - np.conj(self.t2)**2/V2
-        dt_BB = -self.t**2/(-V1) - self.t2**2/V1 - self.t2**2/V2
-        t_AB = -self.t*self.t2/V1 - np.conj(self.t2)*self.t/(-V1)
-        t_BA = -self.t2*self.t/V1 - self.t*np.conj(self.t2)/(-V1)
+        dt_AA = -self.t**2/V1 + np.conj(self.t2)**2/V1 - np.conj(self.t2)**2/V2
+        dt_BB = self.t**2/V1 - self.t2**2/V1 - self.t2**2/V2
+        t_AB = -self.t*self.t2/V1 + np.conj(self.t2)*self.t/V1
+        t_BA = -self.t2*self.t/V1 + self.t*np.conj(self.t2)/V1
         dt_AA_junction = -np.conj(self.t2)**2/V2
         dt_BB_junction = -self.t2**2/V2
+        if self.bare_junctions:
+            dt_AA_junction = 0
+            dt_BB_junction = 0
+        elif self.full_junctions:
+            dt_AA_junction = dt_AA
+            dt_BB_junction = dt_BB
         return dt_AA, dt_BB, t_AB, t_BA, dt_AA_junction, dt_BB_junction
 
     def in_junction(self, site):
@@ -795,7 +804,7 @@ class Ladder_Network(Haldane):
                             if site.uc_idx[0] not in self.i0:
                                 H[tn.site_idx, site.site_idx] += np.conj(self.t_AB)
                 # On-site potential
-                H[site.site_idx, site.site_idx] = self.m if site.sublattice == 'A' else -self.m
+                H[site.site_idx, site.site_idx] += self.m if site.sublattice == 'A' else -self.m
                 if self.V is not None:
                     H[site.site_idx, site.site_idx] += site.V
                 if pbar: pbar.update(1)
