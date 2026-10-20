@@ -4,6 +4,7 @@ from matplotlib.collections import LineCollection
 import numpy as np
 import Lattice
 import Calculations
+from scipy.optimize import curve_fit
 
 
 def make_title_str(data, base_str='', params={}):
@@ -15,7 +16,7 @@ def make_title_str(data, base_str='', params={}):
     return base_str
 
 def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
-                 color_mode=None, cmap='plasma', ipr_scale='log',
+                 color_mode=None, dim=2, cmap='plasma', ipr_scale='log',
                  normalise_E=False, space_x=False, line_width=0.1, lw=1.0,
                  bulk=False, **kwargs):
     """
@@ -50,7 +51,8 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
             color_vals = data['ipr_vals'][mask]
         elif color_mode == 'exponent':
             L = data['L']
-            color_vals = -np.log(data['ipr_vals'][mask]) / np.log(2 * L**2)
+            # color_vals = -np.log(data['ipr_vals'][mask]) / np.log(2 * L**2)
+            color_vals = -np.log(data['ipr_vals'][mask]) / np.log(L)
         elif color_mode == 'polarization':
             color_vals = data['polarization'][mask]
         else:
@@ -69,8 +71,9 @@ def plot_spectrum(filenames, x_param='V', x_label=None, title_params={},
                 mcolors.Normalize(vmin=all_concat.min(), vmax=all_concat.max()))
         cbar_label = 'IPR'
     elif color_mode == 'exponent':
-        norm = mcolors.Normalize(vmin=0, vmax=1)
-        cbar_label = r'$-\frac{\ln{(\mathrm{IPR})}}{\ln{(N_\mathrm{sites})}}$'
+        norm = mcolors.Normalize(vmin=0, vmax=dim)
+        # cbar_label = r'$-\frac{\ln{(\mathrm{IPR})}}{\ln{(N_\mathrm{sites})}}$'
+        cbar_label = r'$-\frac{\ln{(\mathrm{IPR})}}{\ln{(L)}}$'
         fontsize = 15
     elif color_mode == 'polarization':
         norm = mcolors.Normalize(vmin=-1, vmax=1)
@@ -143,7 +146,7 @@ def plot_butterfly(filename, ms=1, title_params={}, color_ipr=False, cmap='virid
 
 
 def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Lattice.Haldane, L=30, cmap=None, ms=5, log=False, max_orders=None,
-                    title_str='', plot_quantity='abs', fix_gauge=True, ax=None, zorder=4, plot_fig=True, cax=None, **kwargs):
+                    title_str=None, plot_quantity='abs', fix_gauge=True, ax=None, zorder=4, plot_fig=True, cax=None, **kwargs):
     if psi is None:
         if filename is None:
             raise ValueError('Either state psi or filename and index must be specified')
@@ -201,14 +204,15 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
         ax.plot([site.r[0]], [site.r[1]], marker='o', ms=ms, color=c, zorder=zorder)
     cbar = fig.colorbar(sm, cax=cax, ax=ax)
     cbar.set_label(z_label, rotation=0)
-    if filename is not None:
+    if title_str is not None:
+        ax.set_title(title_str)
+    elif filename is not None:
         E = data['E_vals'][index]
         title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}'
         if 'ipr_vals' in data.files:
             title_str += r', $IPR=$' + f'{data['ipr_vals'][index]:.4g}'
         if 'polarization' in data.files:
             title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
-    ax.set_title(title_str)
     if plot_fig:
         plt.show()
     else:
@@ -309,7 +313,7 @@ def plot_C_avg_multi(filenames, cmap='viridis', title_params={}, **kwargs):
     
 def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_param='C_mean',
                        cmap='RdBu_r', x_label=None, y_label=None, z_label=None,
-                       title_params={}, vmax=None, plot_power_law=False, A=1, n=0.5, transpose=False,
+                       title_params={}, vmax=None, vmin=None, plot_power_law=False, A=1, n=0.5, transpose=False,
                        ax=None, cax=None, plot_fig=True):
     data = np.load(filename)
     x_data = data[x_param]
@@ -332,7 +336,9 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
 
     if vmax is None:
         vmax = np.max(np.abs(z_data))
-    norm = mcolors.Normalize(vmin=-vmax, vmax=vmax)
+    if vmin is None:
+        vmin = -vmax
+    norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -658,3 +664,107 @@ def plot_bond_currents(I, positions=None, system=None, ax=None, cmap='RdBu_r', t
         plt.show()
 
     return fig, ax, colors
+
+
+def plot_dE_vs_L(filename=None, filenames=None, bulk=False, E_F=None, log=False, title_params={},
+                 plot_chern=False, Elim=None):
+    '''
+    Pass either a single filename with L_vals and gap_mean as parameters, 
+    or a list of filenames from which the energy gap will be calculated
+    from supplied E_F, or (by default) assuming half-filling
+    '''
+    if filename is not None:
+        data = np.load(filename)
+        L_vals = data['L_vals']
+        dE_vals = data['gap_bulk_mean'] if bulk else data['gap_all_mean']
+        dE_err = data['gap_bulk_std'] if bulk else data['gap_all_std']
+    if filenames is not None:
+        L_vals = []
+        dE_vals = []
+        for f in filenames:
+            data = np.load(f)
+            L = data['L']
+            E = data['E_vals']
+            L_vals.append(L)
+            if E_F is None:
+                N_occ = L**2
+                dE_vals.append(E[N_occ] - E[N_occ-1])
+            else:
+                dE_vals.append(np.min(E[E>E_F]) - np.max(E[E<=E_F]))
+        L_vals, dE_vals = np.array(L_vals), np.array(dE_vals)
+        dE_err = np.full_like(dE_vals, np.nan)
+    fig, ax = plt.subplots()
+    ax.errorbar(L_vals, dE_vals, yerr=dE_err, color='b', marker='x', ls='-', label=r'$\Delta E$')
+    if log:
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+    ax.set_xlabel(r'$L$')
+    ax.set_ylabel(r'$\Delta E / t$')
+    if plot_chern:
+        ax2 = ax.twinx()
+        ax2.errorbar(L_vals, data['C_mean'], yerr=data['C_std'], label=r'$\overline{c}$', color='r', marker='x', ls='-')
+        ax.errorbar([np.nan], [np.nan], yerr=[np.nan], color='r', marker='x', ls='-', label=r'$\overline{c}$')
+        ax2.set_ylabel(r'$\overline{c}$')
+        ax.legend()
+    title_str = make_title_str(data=data, base_str='Energy Gap', params=title_params)
+    if E_F is not None:
+        title_str += f', $E_F=${E_F:.3g}'
+    ax.set_title(title_str)
+    if Elim is not None:
+        ax.set_ylim(Elim)
+    plt.show()
+
+
+def plot_dE_vs_V(filename, bulk=True, log=False, plot_chern=False, title_params={}):
+    data = np.load(filename)
+    V_vals = data['V_vals']
+    dE_vals = data['gap_bulk'] if bulk else data['gap_all']
+    fig, ax = plt.subplots()
+    ax.plot(V_vals, dE_vals, color='b', marker='x', ls='-', label=r'$\Delta E$')
+    if log:
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+    ax.set_xlabel(r'$V / t$')
+    ax.set_ylabel(r'$\Delta E / t$')
+    if plot_chern:
+        ax2 = ax.twinx()
+        ax2.plot(V_vals, data['C_arr'], label=r'$\overline{c}$', color='r', marker='x', ls='-')
+        ax.plot([np.nan], [np.nan], color='r', marker='x', ls='-', label=r'$\overline{c}$')
+        ax2.set_ylabel(r'$\overline{c}$')
+        ax.legend()
+    title_str = make_title_str(data=data, base_str='Energy Gap', params=title_params)
+    ax.set_title(title_str)
+    plt.show()
+
+
+def plot_IPR_vs_L(filenames, log=True, title_params={}, guidelines=[], 
+                  fit_power_law=False, **kwargs):
+    L_vals, ipr_vals = Calculations.calc_IPR_vs_L(filenames, **kwargs)
+    fig, ax = plt.subplots()
+    ax.plot(L_vals, ipr_vals, marker='x', ls='-', color='b', label='Data')
+    for (A, n, ls, label) in guidelines:
+        x = np.linspace(L_vals[0], L_vals[-1], 30)
+        y = A * x**n
+        ax.plot(x, y, color='r', ls=ls, label=label)
+    if fit_power_law:
+        def power_law(x, A, n):
+            return A * x**n
+        popt, pcov = curve_fit(power_law, L_vals, ipr_vals, p0=[1,-1], bounds=([0, -np.inf], [np.inf, 0]))
+        perr = np.sqrt(np.diag(pcov))
+        x = np.linspace(L_vals[0], L_vals[-1], 30)
+        y = popt[0] * x**popt[1]
+        ax.plot(x, y, ls=':', color='r', label=r'$AL^n$')
+        ax.text(x=0.5, y=0.8, s=f'A = {popt[0]:.4g}$\pm${perr[0]:.2g}\nn = {popt[1]:.4g}$\pm${perr[1]:.2g}', transform=ax.transAxes)
+    ax.legend()
+    if log:
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+    ax.set_xlabel(r'$L$')
+    ax.set_ylabel(r'$\overline{IPR}$')
+    title_str = make_title_str(data=np.load(filenames[0]), base_str='IPR Scaling', params=title_params)
+    if 'E0' in kwargs.keys():
+        title_str += f', $E_0=${kwargs['E0']:.3g}'
+    elif 'N_avg' in kwargs.keys():
+        title_str += f', $N_{{avg}}=${kwargs['N_avg']}'
+    ax.set_title(title_str)
+    plt.show()
