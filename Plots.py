@@ -211,8 +211,9 @@ def plot_eigenstate(psi=None, filename=None, index=None, system=None, model=Latt
         title_str = f'Eigenstate {index}, ' + r'$E/t=$' + f'{E:.4g}'
         if 'ipr_vals' in data.files:
             title_str += r', $IPR=$' + f'{data['ipr_vals'][index]:.4g}'
-        if 'polarization' in data.files:
-            title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
+        # if 'polarization' in data.files:
+        #     title_str += r', $p=$' + f'{data['polarization'][index]:.4g}'
+        ax.set_title(title_str)
     if plot_fig:
         plt.show()
     else:
