@@ -4,7 +4,7 @@ This repository contains the Python codebase supporting the numerical simulation
 
 ## Repository Structure
 
-The core codebase is organized into four modular Python scripts:
+The primary scripts used to generate the results and figures in the publication are:
 
 | File | Description |
 | :--- | :--- |
@@ -12,6 +12,17 @@ The core codebase is organized into four modular Python scripts:
 | **`Potentials.py`** | On-site potential generators, including the structured quasiperiodic potential supporting weak potential lines (WPLs) (`V_hex_wpl`), alternative 1D/2D quasiperiodic potentials, superlattices, and uncorrelated random disorder (`V_random`). |
 | **`Calculations.py`** | Real-space topological and transport diagnostics. Computes eigenspectra, Inverse Participation Ratio (IPR), density of states (DOS), Bianco-Resta real-space Chern markers, bulk-averaged Chern invariants, real-space equilibrium bond currents, and Fermi-sea time evolution. |
 | **`Plots.py`** | Visualization routines for plotting energy spectra, spatial wavefunctions/eigenstates, real-space Chern marker maps, 2D phase diagrams, real-space bond current distributions, and scaling analyses. |
+| **`Born.py`** | Momentum-space self-energy ($\Sigma$) and Born approximation routines. Used to calculate topological phase boundary shifts (e.g. TAI-BI transitions) under quasiperiodic and random disorder. |
+
+---
+
+### Auxiliary Supercell / Momentum-Space Modules
+
+The repository also includes momentum-space supercell routines developed during exploratory work. While the final manuscript focuses on real-space calculations, these files provide additional utilities for periodic/supercell representations:
+
+* **`Bloch_Hamiltonian.py`**: Folds primitive-cell tight-binding bonds onto an $N \times N$ supercell to build momentum-space Bloch Hamiltonians $H_0(\theta_1, \theta_2)$.
+* **`Bloch_Calculations.py`**: Diagonalization, band structure along high-symmetry paths, and Fukui-Hatsugai-Suzuki (FHS) discretized Berry curvature calculations for periodic supercells.
+* **`Bloch_Plots.py`**: Visualization tools for Bloch band structures, 2D Berry curvature maps, and supercell phase diagrams.
 
 ---
 
