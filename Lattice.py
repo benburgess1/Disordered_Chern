@@ -136,7 +136,7 @@ class Lattice(ABC):
         ax.set_title(title_str)
         if plot_fig:
             plt.show()
-        if cbar:
+        if cbar is not None:
             return ax, cbar
         else:
             return ax
