@@ -345,8 +345,13 @@ def plot_phase_diagram(filename, x_param='t2_mag_vals', y_param='V_vals', z_para
         fig, ax = plt.subplots()
     else:
         fig = ax.get_figure()
-    im = ax.imshow(z_data.T, origin='lower', extent=extent, aspect='auto',
-                   cmap=cmap, norm=norm)
+    # im = ax.imshow(z_data.T, origin='lower', extent=extent, aspect='auto',
+    #                cmap=cmap, norm=norm, interpolation='none')
+    x_min, x_max, y_min, y_max = extent
+    x_edges = np.linspace(x_min, x_max, x_data.size + 1)
+    y_edges = np.linspace(y_min, y_max, y_data.size + 1)
+    im = ax.pcolormesh(x_edges, y_edges, z_data.T, cmap=cmap, norm=norm, 
+                       shading='flat', rasterized=True)
     
     if plot_power_law:
         x_pl = np.linspace(np.min(x_data), np.max(x_data), 100)
