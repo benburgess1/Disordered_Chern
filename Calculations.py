@@ -129,7 +129,9 @@ def calc_avg_chern(chern_marker, system, N_max, return_centre=False):
 
     # Select bulk sites: both lattice-vector coordinates within [-N_max, N_max]
     in_bulk = np.all(np.abs(coeffs) <= N_max, axis=1)
-    avg_chern = np.mean(chern_marker[in_bulk]) * system.N_sublattice / uc_area
+    # avg_chern = np.mean(chern_marker[in_bulk]) * system.N_sublattice / uc_area
+    # Calculate average chern marker as 'Chern flux' / total area
+    avg_chern = np.sum(chern_marker[in_bulk]) / (uc_area * 4 * N_max**2)
     if return_centre:
         return avg_chern, r_centre
     else:
@@ -315,10 +317,11 @@ def calc_bloch_state(k, u, L, model='haldane'):
     return psi
 
 
-def bulk_eigenstate_mask(evects, L=None, N_edge=2, c=0.8, model=Haldane, **kwargs):
+def bulk_eigenstate_mask(evects, L=None, N_edge=2, c=0.8, system=None, **kwargs):
     if L is None:
         L = int(np.sqrt(evects.shape[0]/2))
-    system = model(L=L, show_progress=False, **kwargs)
+    if system is None:
+        system = Haldane(L=L, show_progress=False, **kwargs)
     mask = system.get_bulk_mask(N_edge=N_edge)
     bulk_weights = np.sum(np.abs(evects[mask, :])**2, axis=0)
     return bulk_weights > c
